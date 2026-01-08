@@ -1,0 +1,8 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cyan rounded square -->
+  <rect x="180" y="180" width="664" height="664" rx="160" fill="#00C7F7"></rect>
+
+  <!-- Music note -->
+  <path d="M560 330V590C560 640 520 680 470 680C420 680 380 640 380 590C380 540 420 500 470 500C490 500 510 510 525 525V330H560Z" fill="white"></path>
+  <circle cx="470" cy="590" r="55" fill="white"></circle>
+</svg>
