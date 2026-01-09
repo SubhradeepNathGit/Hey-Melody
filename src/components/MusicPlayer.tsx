@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState, useCallback } from "react";
 import {
   IoMdPause,
   IoMdPlay,
@@ -106,34 +106,34 @@ export default function MusicPlayer() {
     }
   }, [currentTrackId, audioSrc]);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
-    if (a.paused) a.play().catch(() => {});
+    if (a.paused) a.play().catch(() => { });
     else a.pause();
-  };
+  }, []);
 
-  const onSeek = (val: number) => {
+  const onSeek = useCallback((val: number) => {
     const a = audioRef.current;
     if (!a || !Number.isFinite(val)) return;
     a.currentTime = val;
     setCurrentTime(val);
-  };
+  }, []);
 
-  const onVolume = (val: number) => {
+  const onVolume = useCallback((val: number) => {
     if (!Number.isFinite(val)) return;
     setVolume(val);
     if (audioRef.current) audioRef.current.volume = val / 100;
     if (val > 0) setPreviousVolume(val);
-  };
+  }, []);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     if (volume === 0) onVolume(previousVolume || 50);
     else {
       setPreviousVolume(volume);
       onVolume(0);
     }
-  };
+  }, [volume, previousVolume, onVolume]);
 
   // -------------------------------------------------------
   // 🎹 KEYBOARD SHORTCUTS ADDED HERE
@@ -204,7 +204,7 @@ export default function MusicPlayer() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [isPlaying, volume, isQueueModalOpen]);
+  }, [isPlaying, volume, isQueueModalOpen, togglePlay, toggleMute, onVolume, setQueueModalOpen]);
   // -------------------------------------------------------
 
   const isVisible = Boolean(currentMusic && audioSrc);

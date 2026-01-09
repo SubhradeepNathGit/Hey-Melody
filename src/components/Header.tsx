@@ -5,6 +5,7 @@ import Image from "next/image";
 import { GoSearch } from "react-icons/go";
 import { RxHamburgerMenu, RxCross2 } from "react-icons/rx";
 import Logo from "./Logo";
+import { User } from "@supabase/supabase-js";
 
 type HeaderProps = {
   searchQuery: string;
@@ -14,7 +15,14 @@ type HeaderProps = {
   setMobileMenuOpen: (open: boolean) => void;
   mobileSearchOpen: boolean;
   setMobileSearchOpen: (open: boolean) => void;
-  authUser: any;
+  authUser: {
+    email?: string | null;
+    user_metadata?: {
+      display_name?: string | null;
+      avatar_url?: string | null;
+      full_name?: string | null;
+    } | null;
+  } | null;
   handleLogout: () => void;
 };
 
@@ -146,9 +154,8 @@ export default function Header({
 
           {/* Mobile Search */}
           <div
-            className={`md:hidden overflow-hidden transition-all duration-300 ${
-              mobileSearchOpen ? "max-h-24 mt-4" : "max-h-0"
-            }`}
+            className={`md:hidden overflow-hidden transition-all duration-300 ${mobileSearchOpen ? "max-h-24 mt-4" : "max-h-0"
+              }`}
           >
             <div className="relative group">
               <GoSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-cyan-400 transition-colors text-lg pointer-events-none" />
@@ -167,9 +174,8 @@ export default function Header({
 
           {/* Mobile Menu */}
           <div
-            className={`md:hidden overflow-hidden transition-all duration-300 ${
-              mobileMenuOpen ? "max-h-48 mt-4" : "max-h-0"
-            }`}
+            className={`md:hidden overflow-hidden transition-all duration-300 ${mobileMenuOpen ? "max-h-48 mt-4" : "max-h-0"
+              }`}
           >
             <div className="grid gap-2">
               {!authUser ? (

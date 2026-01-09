@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Play } from "lucide-react";
-import type { Song } from "../types/song";
+import type { Song } from "../../types/song";
 
 type NowPlayingSidebarProps = {
   isPlayingSomething: boolean;
@@ -30,8 +30,8 @@ export default function NowPlayingSidebar({
         ${isPlayingSomething ? "opacity-100" : "opacity-0 pointer-events-none"}
       `}
     >
-    <div
-  className="
+      <div
+        className="
     backdrop-blur-xl bg-white/5
     border border-white/10
     rounded-2xl
@@ -44,9 +44,9 @@ export default function NowPlayingSidebar({
     sm:min-h-[460px]
     lg:min-h-[520px]
   "
->
+      >
 
-      
+
         {/* Header */}
         <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />

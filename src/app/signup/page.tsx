@@ -19,7 +19,7 @@ export default function Page() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
-  const theme = useMemo(() => ({ cyan: "#06b6d4" }), []);
+  // const theme = useMemo(() => ({ cyan: "#06b6d4" }), []);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -41,7 +41,7 @@ export default function Page() {
     setSubmitting(true);
     try {
       const supabase = getSupabaseClient();
-      const { data, error } = await supabase.auth.signUp({
+      const { data: _data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -59,7 +59,7 @@ export default function Page() {
         return;
       }
 
-      if (data.session) {
+      if (_data.session) {
         toast.success("Registration successful!");
         setTimeout(() => router.push("/login"), 1200);
       } else {
@@ -76,7 +76,7 @@ export default function Page() {
   const handleGoogleSignup = async () => {
     setGoogleLoading(true);
     setMessage("");
-    
+
     try {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -106,7 +106,7 @@ export default function Page() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden p-4 flex items-center justify-center bg-black">
-      <Toaster 
+      <Toaster
         position="top-center"
         toastOptions={{
           style: {
@@ -166,7 +166,7 @@ export default function Page() {
             <div className="inline-flex items-center gap-3 mb-3">
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 grid place-items-center shadow-lg shadow-cyan-500/30">
                 <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
                 </svg>
               </div>
             </div>
@@ -200,8 +200,8 @@ export default function Page() {
             >
               {googleLoading ? (
                 <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
               ) : (
                 <>
@@ -330,8 +330,8 @@ export default function Page() {
               {submitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                   Creating account…
                 </span>

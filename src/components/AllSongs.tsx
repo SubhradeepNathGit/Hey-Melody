@@ -211,12 +211,12 @@ export default function AllSongs() {
     player.playNow(song, filteredAndSortedSongs);
     try {
       window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-    } catch {}
+    } catch { }
   };
 
   const openPicker = (song: Song) => {
     if (!authUser) {
-      toast("Please log in to use playlists", { 
+      toast("Please log in to use playlists", {
         icon: <Lock className="w-4 h-4" />
       });
       return;
@@ -228,7 +228,7 @@ export default function AllSongs() {
     if (authUser) {
       toggleLike.mutate(song);
     } else {
-      toast("Please log in to like songs", { 
+      toast("Please log in to like songs", {
         icon: <Lock className="w-4 h-4" />
       });
     }
@@ -246,7 +246,7 @@ export default function AllSongs() {
         await addToPlaylist.mutateAsync({ playlist_id: p.id, song_id: pickerForSong.id as unknown as number });
       }
       setNewPlaylistName("");
-    } catch {}
+    } catch { }
   };
 
   const getVideoUrl = (s: Song | null): string | null => {
@@ -288,18 +288,18 @@ export default function AllSongs() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-black text-white">
-      <Toaster 
-        position="top-center" 
-        toastOptions={{ 
-          style: { 
-            background: "rgba(24, 24, 27, 0.95)", 
-            color: "#fff", 
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: "rgba(24, 24, 27, 0.95)",
+            color: "#fff",
             border: "1px solid rgba(39, 39, 42, 0.5)",
             backdropFilter: "blur(12px)",
             boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
           },
           duration: 3000,
-        }} 
+        }}
       />
 
       <Header
@@ -310,7 +310,7 @@ export default function AllSongs() {
         setMobileMenuOpen={setMobileMenuOpen}
         mobileSearchOpen={mobileSearchOpen}
         setMobileSearchOpen={setMobileSearchOpen}
-        authUser={authUser}
+        authUser={authUser ?? null}
         handleLogout={handleLogout}
       />
 
@@ -331,11 +331,10 @@ export default function AllSongs() {
           </div>
         )}
 
-        <div className={`grid gap-6 ${
-          isPlayingSomething 
-            ? "grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_400px]" 
-            : "grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]"
-        }`}>
+        <div className={`grid gap-6 ${isPlayingSomething
+          ? "grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_400px]"
+          : "grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]"
+          }`}>
           <LeftSidebar
             sortOption={sortOption}
             setSortOption={setSortOption}
@@ -381,11 +380,10 @@ export default function AllSongs() {
               <h3 className="text-xl font-bold mb-5 bg-gradient-to-r from-white via-cyan-100 to-zinc-400 bg-clip-text text-transparent">
                 All songs
               </h3>
-              <div className={`grid gap-5 items-stretch ${
-                isPlayingSomething 
-                  ? "grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3"
-                  : "grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5"
-              }`}>
+              <div className={`grid gap-5 items-stretch ${isPlayingSomething
+                ? "grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3"
+                : "grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5"
+                }`}>
                 {currentSongs.map((song) => {
                   const isLiked = !!authUser && likedSet.has(song.id as unknown as number);
                   return (
@@ -422,7 +420,7 @@ export default function AllSongs() {
       <AddToPlaylistModal
         pickerForSong={pickerForSong}
         setPickerForSong={setPickerForSong}
-        authUser={authUser}
+        authUser={authUser ?? null}
         playlists={playlists}
         playlistsLoading={playlistsLoading}
         newPlaylistName={newPlaylistName}

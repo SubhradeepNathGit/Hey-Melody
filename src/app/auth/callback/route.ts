@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+
+// import { cookies } from 'next/headers';
 import getSupabaseClient from '../../../../api/SupabaseClient';
 
 export async function GET(request: Request) {

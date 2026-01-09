@@ -7,6 +7,7 @@ type CreatePlaylistFormProps = {
   onSubmit: (data: {
     name: string;
     description: string;
+    coverFile: File | null;
   }) => Promise<void>;
   busy: boolean;
 };
@@ -18,7 +19,7 @@ export default function CreatePlaylistForm({ onSubmit, busy }: CreatePlaylistFor
   const handleSubmit = async () => {
     if (!name || busy) return;
 
-    await onSubmit({ name, description });
+    await onSubmit({ name, description, coverFile: null });
 
     setName("");
     setDescription("");

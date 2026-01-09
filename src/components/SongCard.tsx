@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { IoMdHeart, IoMdHeartEmpty } from "react-icons/io";
-import type { Song } from "../types/song";
+import type { Song } from "../../types/song";
 
 type SongCardProps = {
   song: Song;
@@ -111,12 +111,12 @@ export default function SongCard({
 
         {/* Like Button */}
         <button
-  onClick={(e) => {
-    e.stopPropagation();
-    onToggleLike(song);
-  }}
-  disabled={likedLoading || toggleLikePending}
-  className="
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleLike(song);
+          }}
+          disabled={likedLoading || toggleLikePending}
+          className="
     absolute top-3 left-3
     h-9 w-9 rounded-lg
     grid place-items-center
@@ -124,15 +124,15 @@ export default function SongCard({
     hover:bg-zinc-800 hover:border-cyan-500/30
     backdrop-blur-sm z-10 transition-all
   "
-  aria-label={isLiked ? "Unlike" : "Like"}
-  title={isLiked ? "Unlike" : "Like"}
->
-  {isLiked ? (
-    <IoMdHeart className="text-cyan-400 text-lg" />
-  ) : (
-    <IoMdHeartEmpty className="text-zinc-400 text-lg" />
-  )}
-</button>
+          aria-label={isLiked ? "Unlike" : "Like"}
+          title={isLiked ? "Unlike" : "Like"}
+        >
+          {isLiked ? (
+            <IoMdHeart className="text-cyan-400 text-lg" />
+          ) : (
+            <IoMdHeartEmpty className="text-zinc-400 text-lg" />
+          )}
+        </button>
 
         {/* Album Art */}
         <div className="relative aspect-square w-full overflow-hidden rounded-xl pointer-events-none shadow-lg">

@@ -1,7 +1,8 @@
 "use client";
 
 import { RxCross2 } from "react-icons/rx";
-import type { Song } from "../types/song";
+import type { Song } from "../../types/song";
+import { User } from "@supabase/supabase-js";
 
 type Playlist = {
   id: number;
@@ -12,7 +13,14 @@ type Playlist = {
 type AddToPlaylistModalProps = {
   pickerForSong: Song | null;
   setPickerForSong: (song: Song | null) => void;
-  authUser: any;
+  authUser: {
+    email?: string | null;
+    user_metadata?: {
+      display_name?: string | null;
+      avatar_url?: string | null;
+      full_name?: string | null;
+    } | null;
+  } | null;
   playlists: Playlist[] | undefined;
   playlistsLoading: boolean;
   newPlaylistName: string;
