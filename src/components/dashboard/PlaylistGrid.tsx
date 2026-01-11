@@ -1,5 +1,10 @@
 "use client";
 
+import { Music2, Play, Trash2, X, CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import DeleteConfirmModal from "./DeleteConfirmModal";
+
 type Playlist = {
   id: number;
   user_id: string;
@@ -17,105 +22,183 @@ type PlaylistGridProps = {
   onDelete: (id: number) => void;
 };
 
-export default function PlaylistGrid({ playlists, onOpen, onDelete }: PlaylistGridProps) {
+type Toast = {
+  id: number;
+  message: string;
+  type: "success" | "error" | "info";
+};
+
+function Toast({ message, onClose }: { message: string; onClose: () => void }) {
+  return (
+    <div className="flex items-center gap-3 min-w-[280px] max-w-md bg-zinc-900/95 backdrop-blur-xl border border-cyan-500/30 rounded-xl p-4 shadow-2xl shadow-cyan-500/10 animate-in slide-in-from-right duration-300">
+      <div className="h-10 w-10 rounded-full bg-cyan-500/10 flex items-center justify-center ring-1 ring-cyan-500/20 flex-shrink-0">
+        <CheckCircle2 className="h-5 w-5 text-cyan-400" />
+      </div>
+      <p className="flex-1 text-sm font-medium text-white">{message}</p>
+      <button
+        type="button"
+        onClick={onClose}
+        className="h-6 w-6 rounded-full bg-zinc-800/50 hover:bg-zinc-700/50 flex items-center justify-center transition-colors flex-shrink-0"
+      >
+        <X className="h-3 w-3 text-zinc-400" />
+      </button>
+    </div>
+  );
+}
+
+function ToastContainer({
+  toasts,
+  onRemove,
+}: {
+  toasts: Toast[];
+  onRemove: (id: number) => void;
+}) {
+  return (
+    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-3 max-w-[calc(100vw-2rem)]">
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          onClose={() => onRemove(toast.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
+
+
+export default function PlaylistGrid({
+  playlists,
+  onOpen,
+  onDelete,
+}: PlaylistGridProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Clear URL parameters to prevent banner messages
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search) {
+      router.replace(pathname, { scroll: false });
+    }
+  }, [router, pathname]);
+
+  const [deleteDialog, setDeleteDialog] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const showToast = (message: string) => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type: "success" }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteDialog) return;
+    onDelete(deleteDialog.id);
+    showToast(`${deleteDialog.name} Playlist has been deleted`);
+    setDeleteDialog(null);
+  };
+
   if (playlists.length === 0) {
     return (
-      <div className="text-center py-12 sm:py-16 md:py-20 px-4 rounded-2xl sm:rounded-3xl border border-white/10 bg-zinc-900/30 backdrop-blur-xl">
-        <div className="inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-cyan-500/10 mb-4 sm:mb-6 ring-1 ring-cyan-500/30">
-          <svg className="h-8 w-8 sm:h-10 sm:w-10 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-          </svg>
+      <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
+        <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-gradient-to-br from-cyan-900/40 to-cyan-600/50 flex items-center justify-center mb-4 sm:mb-6">
+          <Music2 className="h-10 w-10 sm:h-12 sm:w-12 text-cyan-500/50" strokeWidth={2} />
         </div>
-        <h3 className="text-lg sm:text-xl font-bold text-white mb-2">No playlists yet</h3>
-        <p className="text-sm sm:text-base text-zinc-400 max-w-md mx-auto">
-          Create your first playlist to organize your favorite tracks
+        <h3 className="text-lg sm:text-xl font-bold text-white mb-2 text-center">No playlists yet</h3>
+        <p className="text-sm sm:text-base text-zinc-400 text-center max-w-sm">
+          Create your first playlist to organize your favorite songs
         </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
-      {playlists.map((playlist) => {
-        const count = playlist.playlist_songs?.length ?? 0;
-        
-        return (
-          <div
-            key={playlist.id}
-            className="group relative rounded-xl sm:rounded-2xl border border-white/10 bg-zinc-900/50 backdrop-blur-xl overflow-hidden hover:bg-zinc-800/50 transition-all duration-300 hover:border-cyan-500/30 shadow-lg hover:shadow-cyan-500/10"
-          >
-            {/* Cover Image */}
-            <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-zinc-800 to-black">
-              {playlist.cover_image_url ? (
-                <img
-                  src={playlist.cover_image_url}
-                  alt={playlist.name}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-              ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-zinc-900">
-                  <div 
-                    className="absolute inset-0 opacity-20" 
-                    style={{
-                      backgroundImage: 'linear-gradient(45deg, rgba(6,182,212,0.4) 1px, transparent 1px), linear-gradient(-45deg, rgba(6,182,212,0.4) 1px, transparent 1px)',
-                      backgroundSize: '20px 20px'
-                    }}
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+        {playlists.map((playlist) => {
+          const count = playlist.playlist_songs?.length ?? 0;
+
+          return (
+            <div
+              key={playlist.id}
+              onClick={() => onOpen(playlist.id)}
+              className="group rounded-2xl bg-zinc-900/80 p-3 sm:p-4 cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <div className="relative aspect-square rounded-xl overflow-hidden mb-3 sm:mb-4">
+                {playlist.cover_image_url ? (
+                  <img
+                    src={playlist.cover_image_url}
+                    alt={playlist.name}
+                    className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <svg className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 text-cyan-400/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                    </svg>
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-cyan-600/50 flex items-center justify-center">
+                    <Music2
+                      className="h-16 w-16 sm:h-20 sm:w-20 text-cyan-500/30"
+                      strokeWidth={3}
+                    />
                   </div>
-                </div>
-              )}
-              
-              {/* Overlay with Play Button */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4">
-                  <button
-                    onClick={() => onOpen(playlist.id)}
-                    className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-cyan-500 hover:bg-cyan-400 flex items-center justify-center shadow-lg shadow-cyan-500/50 hover:scale-110 transition-all active:scale-95"
-                  >
-                    <svg className="h-4 w-4 sm:h-5 sm:w-5 text-black ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
+                )}
 
-            {/* Info Section */}
-            <div className="p-3 sm:p-4 space-y-1.5 sm:space-y-2">
-              <h3 className="font-bold text-sm sm:text-base truncate group-hover:text-cyan-400 transition-colors">
-                {playlist.name}
-              </h3>
-              
-              <p className="text-xs sm:text-sm text-zinc-500 line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem]">
-                {playlist.description || "No description"}
-              </p>
-
-              <div className="flex items-center justify-between pt-1 sm:pt-2">
-                <span className="text-xs text-zinc-500 flex items-center gap-1">
-                  <svg className="h-3 w-3 sm:h-3.5 sm:w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                  </svg>
-                  {count} song{count === 1 ? "" : "s"}
-                </span>
-                
                 <button
-                  onClick={() => onDelete(playlist.id)}
-                  className="opacity-0 group-hover:opacity-100 h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 flex items-center justify-center transition-all active:scale-95"
-                  title="Delete playlist"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen(playlist.id);
+                  }}
+                  className="absolute bottom-2 right-2 h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-white/10 backdrop-blur-lg opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all hover:bg-white/20 hover:scale-110"
                 >
-                  <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                  <Play className="h-4 w-4 sm:h-5 sm:w-5 text-white ml-0.5" fill="currentColor" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteDialog({
+                      id: playlist.id,
+                      name: playlist.name,
+                    });
+                  }}
+                  className="absolute top-2 sm:top-3 left-2 sm:left-3 h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/40"
+                >
+                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-white/70" />
                 </button>
               </div>
+
+              <h3 className="font-bold text-white truncate text-sm sm:text-base">
+                {playlist.name}
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-400 truncate">
+                {playlist.description ||
+                  `${count} song${count !== 1 ? "s" : ""}`}
+              </p>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+
+      <DeleteConfirmModal
+        isOpen={!!deleteDialog}
+        title="Delete Playlist?"
+        itemName={deleteDialog?.name || ""}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteDialog(null)}
+      />
+
+      <ToastContainer
+        toasts={toasts}
+        onRemove={(id) =>
+          setToasts((prev) => prev.filter((t) => t.id !== id))
+        }
+      />
+    </>
   );
 }

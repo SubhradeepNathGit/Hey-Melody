@@ -1,19 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState, useContext, useCallback } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Disc, Plus, Heart, Music2, Upload, Eye, Trash2, Play } from "lucide-react";
 import getSupabaseClient from "../../../api/SupabaseClient";
-import { motion } from "framer-motion";
 import { PlayerContext } from "../../../layouts/FrontendLayout";
+import toast from "react-hot-toast";
 import type { Song } from "../../../types/song";
 
 // Import Components
 import Header from "../../components/Header";
 import ProfileSection from "../../components/dashboard/ProfileSection";
 import UploadSongForm from "../../components/dashboard/UploadSongForm";
-import CreatePlaylistForm from "../../components/dashboard/CreatePlaylistForm";
 import PlaylistGrid from "../../components/dashboard/PlaylistGrid";
 import PlaylistModal from "../../components/dashboard/PlaylistModal";
+import AddToPlaylistModal from "../../components/dashboard/AddToPlaylistModal";
+import Footer from "../../components/Footer";
+import DeleteConfirmModal from "../../components/dashboard/DeleteConfirmModal";
 
+// Types
 type Profile = {
   id: string;
   email: string | null;
@@ -38,46 +43,126 @@ type PlaylistSongRow = {
   position: number | null;
 };
 
-type SupabasePlaylistSongResponse = {
-  added_at: string;
-  position: number | null;
-  song: Song | Song[];
-};
-
 type Bucket = "songs" | "covers";
+
+// Helper for uniq
+function uniq<T>(arr: T[]): T[] {
+  return Array.from(new Set(arr));
+}
 
 export default function UserDashboard() {
   const [me, setMe] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
 
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [plBusy, setPlBusy] = useState(false);
   const [openPlaylistId, setOpenPlaylistId] = useState<number | null>(null);
   const [openPlaylistSongs, setOpenPlaylistSongs] = useState<PlaylistSongRow[] | null>(null);
 
-  // Header state
+  const [deleteAlbumDialog, setDeleteAlbumDialog] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  // For Liked, Album modals - we reuse PlaylistModal by creating a "virtual" playlist
+  const [virtualPlaylist, setVirtualPlaylist] = useState<{ playlist: any; songs: PlaylistSongRow[] } | null>(null);
+
+  const queryClient = useQueryClient();
+
+
+  // --- Fetch Playlists ---
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+    queryKey: ["user-playlists", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from("playlists")
+        .select("id,user_id,name,description,is_public,created_at,cover_image_url, playlist_songs ( song_id )")
+        .eq("user_id", me!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Playlist[];
+    },
+  });
+
+  // --- Fetch Liked Songs ---
+  const { data: likedSongs = [] } = useQuery({
+    queryKey: ["user-liked-songs", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from("liked_songs")
+        .select("created_at, song:songs(*)")
+        .eq("user_id", me!.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return (data as any[])?.map((row) => ({
+        song: row.song as Song,
+        added_at: row.created_at,
+        position: null
+      })) as PlaylistSongRow[];
+    },
+  });
+
+  // --- Fetch Albums ---
+  const { data: albums = [] } = useQuery({
+    queryKey: ["user-albums", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from("albums")
+        .select(`
+          id, 
+          user_id, 
+          name, 
+          description, 
+          cover_image_url, 
+          artist, 
+          album_songs(
+            song_id,
+            songs(cover_image_url, audio_url, title, artist, id)
+          )
+        `)
+        .eq("user_id", me!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
+  // Derive Album List with songs
+  const albumList = useMemo(() => {
+    return albums.map(album => {
+      const songs = (album.album_songs || []).map((as: any) => as.songs).filter(Boolean);
+      const firstSongCover = songs[0]?.cover_image_url;
+
+      return {
+        id: album.id,
+        name: album.name,
+        cover: album.cover_image_url || firstSongCover,
+        artist: album.artist || songs[0]?.artist || "Unknown",
+        songCount: album.album_songs?.length || 0,
+        songs: songs
+      };
+    });
+  }, [albums]);
+
+
+  // Add to Playlist Modal State
+  const [addToPlaylistModal, setAddToPlaylistModal] = useState<{
+    isOpen: boolean;
+    song: Song | null;
+  }>({ isOpen: false, song: null });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [_currentPage, setCurrentPage] = useState(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const player = useContext(PlayerContext);
-
-  const loadPlaylists = useCallback(async (uid: string) => {
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-      .from("playlists")
-      .select("id,user_id,name,description,is_public,created_at,cover_image_url, playlist_songs ( song_id )")
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false });
-    if (error) {
-      setMsg(error.message || "Failed to load playlists");
-      return;
-    }
-    setPlaylists((data ?? []) as Playlist[]);
-  }, []);
 
   useEffect(() => {
     (async () => {
@@ -88,38 +173,27 @@ export default function UserDashboard() {
         return;
       }
       const { id, email, user_metadata } = auth.user;
-      const profile: Profile = {
+      setMe({
         id,
         email: email ?? null,
         display_name: user_metadata?.display_name || user_metadata?.full_name || null,
         avatar_url: user_metadata?.avatar_url || null,
-      };
-      setMe(profile);
-      await loadPlaylists(id);
+      });
       setLoading(false);
     })();
-  }, [loadPlaylists]);
+  }, []);
 
   const displayName = useMemo(() => {
     if (!me) return "You";
-    if (me.display_name && me.display_name.trim() !== "") {
-      return me.display_name;
-    }
-    return me.email?.split("@")[0] || "You";
+    return me.display_name?.trim() || me.email?.split("@")[0] || "You";
   }, [me]);
 
   async function uploadTo(bucket: Bucket, file: File, prefix?: string) {
     const supabase = getSupabaseClient();
-    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
-    const id = crypto.randomUUID();
-    const path = prefix ? `${prefix}/${id}.${ext}` : `${id}.${ext}`;
-    const { error } = await supabase.storage.from(bucket).upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-    if (error) throw error;
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-    return data.publicUrl;
+    const ext = file.name.split(".").pop() || "bin";
+    const path = `${prefix ?? ""}/${crypto.randomUUID()}.${ext}`;
+    await supabase.storage.from(bucket).upload(path, file);
+    return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
   }
 
   async function handleAddSong(data: {
@@ -129,168 +203,272 @@ export default function UserDashboard() {
     coverFile: File;
   }) {
     setBusy(true);
-    setMsg("");
     try {
       const audio_url = await uploadTo("songs", data.audioFile);
       const cover_image_url = await uploadTo("covers", data.coverFile, "songs");
-      const insertPayload = {
+      await getSupabaseClient().from("songs").insert({
         title: data.title,
         artist: data.artist,
         audio_url,
         cover_image_url,
-      };
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.from("songs").insert(insertPayload);
-      if (error) throw error;
-      setMsg("Song uploaded successfully! ✨");
-      setTimeout(() => setMsg(""), 3000);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to add song";
-      setMsg(message);
+      });
+      // Invalidate both lists
+      queryClient.invalidateQueries({ queryKey: ["allSongs"] });
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleCreatePlaylist(data: {
-    name: string;
-    description: string;
-    coverFile: File | null;
-  }) {
-    if (!me?.id) return;
-    setPlBusy(true);
-    setMsg("");
-    try {
-      const cover_image_url = data.coverFile
-        ? await uploadTo("covers", data.coverFile, `playlists/${me.id}`)
-        : null;
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.from("playlists").insert({
-        user_id: me.id,
-        name: data.name.trim(),
-        description: data.description.trim() || null,
-        cover_image_url,
-      });
+  const createPlaylistMutation = useMutation({
+    mutationFn: async ({ name, description }: { name: string; description?: string }) => {
+      if (!me) throw new Error("Not logged in");
+      const { data, error } = await getSupabaseClient()
+        .from("playlists")
+        .insert({
+          user_id: me.id,
+          name: name.trim(),
+          description: description?.trim() || null,
+          cover_image_url: null,
+        })
+        .select()
+        .single();
       if (error) throw error;
-      await loadPlaylists(me.id);
-      setMsg("Playlist created successfully! 🎉");
-      setTimeout(() => setMsg(""), 3000);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to create playlist";
-      setMsg(message);
-    } finally {
-      setPlBusy(false);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-playlists", me?.id] });
+      toast.success("Playlist created");
+    },
+    onError: (e: any) => {
+      toast.error(e.message || "Failed to create playlist");
+    }
+  });
+
+  async function handleCreatePlaylist(name: string, description?: string) {
+    if (!me) return;
+    try {
+      const data = await createPlaylistMutation.mutateAsync({ name, description });
+      return data?.id;
+    } catch {
+      return null;
     }
   }
 
+  // Opening actual playlists
   async function openPlaylist(playlistId: number) {
     setOpenPlaylistId(playlistId);
     setOpenPlaylistSongs(null);
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase
+    setVirtualPlaylist(null); // Close virtual if open
+    const { data } = await getSupabaseClient()
       .from("playlist_songs")
       .select("added_at, position, song:songs(*)")
       .eq("playlist_id", playlistId)
-      .order("position", { ascending: true })
-      .order("added_at", { ascending: true });
-    if (error) {
-      setMsg(error.message || "Failed to load playlist songs");
-      return;
-    }
-    const transformedData = (data ?? []).map((row: SupabasePlaylistSongResponse) => ({
-      added_at: row.added_at,
-      position: row.position,
-      song: Array.isArray(row.song) ? row.song[0] : row.song,
-    })) as PlaylistSongRow[];
-    setOpenPlaylistSongs(transformedData);
+      .order("position", { ascending: true });
+
+    setOpenPlaylistSongs(
+      (data ?? []).map((r: any) => ({
+        added_at: r.added_at,
+        position: r.position,
+        song: Array.isArray(r.song) ? r.song[0] : r.song,
+      }))
+    );
   }
 
+  // Open Liked Songs Modal
+  function openLikedSongsModal() {
+    setOpenPlaylistId(null);
+    setVirtualPlaylist({
+      playlist: {
+        id: -1,
+        name: "Liked Songs",
+        description: "Songs you have liked",
+        cover_image_url: null, // Will be dynamic based on current song
+      },
+      songs: likedSongs
+    });
+  }
+
+  // Open Album Modal
+  async function openAlbumModal(albumId: string) {
+    const album = albums.find(a => a.id === albumId);
+    if (!album) return;
+
+    // Fetch songs in this album
+    const { data } = await getSupabaseClient()
+      .from("album_songs")
+      .select("added_at, position, song:songs(*)")
+      .eq("album_id", albumId)
+      .order("position", { ascending: true });
+
+    setOpenPlaylistId(null);
+    setVirtualPlaylist({
+      playlist: {
+        id: albumId,
+        name: album.name,
+        description: `Album by ${album.artist || 'Unknown'}`,
+        cover_image_url: album.cover_image_url,
+      },
+      songs: (data ?? []).map((r: any) => ({
+        added_at: r.added_at,
+        position: r.position,
+        song: Array.isArray(r.song) ? r.song[0] : r.song,
+      }))
+    });
+  }
+
+
   async function removeSongFromPlaylist(playlistId: number, songId: number) {
-    const supabase = getSupabaseClient();
-    const { error } = await supabase
+    await getSupabaseClient()
       .from("playlist_songs")
       .delete()
       .match({ playlist_id: playlistId, song_id: songId });
-    if (error) {
-      setMsg(error.message || "Failed to remove");
-      return;
-    }
-    setMsg("Removed from playlist");
-    setTimeout(() => setMsg(""), 2000);
     await openPlaylist(playlistId);
-    await loadPlaylists(me!.id);
+    queryClient.invalidateQueries({ queryKey: ["user-playlists", me?.id] });
+  }
+
+  async function unlikeSong(songId: number) {
+    if (!me) return;
+    await getSupabaseClient().from("liked_songs").delete().match({ user_id: me.id, song_id: songId });
+    queryClient.invalidateQueries({ queryKey: ["user-liked-songs", me.id] });
+    queryClient.invalidateQueries({ queryKey: ["user-liked-song-ids", me.id] });
+    // Close modal if empty? or just update
+    // We need to update the virtual playlist state or let react-query handle it
+    // Since virtualPlaylist is state derived from query, it won't auto-update unless we sync it
+    // Or simpler: just close modal or let user close it. 
+    // Better: Update the virtual playlist local state if it's open
+    setVirtualPlaylist(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        songs: prev.songs.filter(s => s.song.id !== (songId as unknown as number)) // Typo fix
+      }
+    });
+    toast.success("Removed from Liked Songs");
+  }
+
+  async function removeSongFromAlbum(songId: number) {
+    if (!virtualPlaylist || typeof virtualPlaylist.playlist.id !== 'string') return;
+    const albumId = virtualPlaylist.playlist.id;
+
+    await getSupabaseClient()
+      .from("album_songs")
+      .delete()
+      .match({ album_id: albumId, song_id: songId });
+
+    queryClient.invalidateQueries({ queryKey: ["user-albums", me?.id] });
+
+    // Update virtual playlist state to remove the song
+    setVirtualPlaylist(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        songs: prev.songs.filter(s => s.song.id !== (songId as unknown as number))
+      }
+    });
+
+    toast.success("Removed from album");
   }
 
   async function deletePlaylist(playlistId: number) {
-    const supabase = getSupabaseClient();
-    const { error } = await supabase.from("playlists").delete().eq("id", playlistId);
-    if (error) {
-      setMsg(error.message || "Failed to delete playlist");
-      return;
-    }
-    setMsg("Playlist deleted");
-    setTimeout(() => setMsg(""), 2000);
+    await getSupabaseClient().from("playlists").delete().eq("id", playlistId);
+    queryClient.invalidateQueries({ queryKey: ["myPlaylists", me?.id] });
+
     if (openPlaylistId === playlistId) {
       setOpenPlaylistId(null);
       setOpenPlaylistSongs(null);
     }
-    setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+  }
+
+  function openDeleteAlbumModal(albumId: string, albumName: string) {
+    setDeleteAlbumDialog({ id: albumId, name: albumName });
+  }
+
+  async function handleConfirmDeleteAlbum() {
+    if (!deleteAlbumDialog) return;
+    const { id, name } = deleteAlbumDialog;
+
+    await getSupabaseClient().from("albums").delete().eq("id", id);
+    queryClient.invalidateQueries({ queryKey: ["user-albums", me?.id] });
+
+    // Close modal if it's open for this album
+    if (virtualPlaylist && virtualPlaylist.playlist.id === id) {
+      setVirtualPlaylist(null);
+    }
+
+    setDeleteAlbumDialog(null);
+    toast.success(`Album "${name}" deleted`);
+  }
+
+  async function deleteAlbum(albumId: string) {
+    const album = albumList.find(a => a.id === albumId);
+    if (!album) return;
+    openDeleteAlbumModal(albumId, album.name);
   }
 
   function playFromModal(song: Song) {
     if (!player) return;
-    const queue = (openPlaylistSongs?.map((r) => r.song) ?? [song]) as Song[];
+    const list = openPlaylistSongs ?? virtualPlaylist?.songs ?? [];
+    const queue = list.map((r) => r.song);
     player.playNow(song, queue);
   }
 
   async function handleLogout() {
-    const supabase = getSupabaseClient();
-    await supabase.auth.signOut();
+    await getSupabaseClient().auth.signOut();
     window.location.href = "/";
+  }
+
+  function openAddToPlaylistModal(song: Song) {
+    setAddToPlaylistModal({ isOpen: true, song });
+  }
+
+  function closeAddToPlaylistModal() {
+    setAddToPlaylistModal({ isOpen: false, song: null });
+  }
+
+  async function handleAddToPlaylist(playlistId: number) {
+    if (!addToPlaylistModal.song) return;
+
+    const { error } = await getSupabaseClient().from("playlist_songs").insert({
+      playlist_id: playlistId,
+      song_id: addToPlaylistModal.song.id,
+    });
+
+    if (error) {
+      toast.error("Could not add to playlist");
+    } else {
+      toast.success("Added to playlist");
+      queryClient.invalidateQueries({ queryKey: ["user-playlists", me?.id] });
+      closeAddToPlaylistModal();
+    }
+  }
+
+  async function handleCreateAndAddToPlaylist(name: string) {
+    if (!addToPlaylistModal.song) return;
+    const playlistId = await handleCreatePlaylist(name);
+    if (playlistId) {
+      await getSupabaseClient().from("playlist_songs").insert({
+        playlist_id: playlistId,
+        song_id: addToPlaylistModal.song.id,
+      });
+    }
+    closeAddToPlaylistModal();
   }
 
   if (loading) {
     return (
       <main className="min-h-screen grid place-items-center bg-black text-white">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-zinc-400">Loading Dashboard...</p>
-        </div>
+        <div className="h-12 w-12 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
       </main>
     );
   }
 
-  if (!me) {
-    return (
-      <main className="min-h-screen grid place-items-center bg-black text-white p-4 relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(1000px 500px at 10% -10%, rgba(6,182,212,0.15), transparent 60%)",
-          }}
-        />
-        <div className="max-w-md px-4 text-center relative">
-          <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-cyan-500/10 ring-1 ring-cyan-500/20">
-            <svg className="h-10 w-10 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold mb-3">Authentication Required</h1>
-          <p className="text-zinc-400">Please sign in to access your dashboard.</p>
-        </div>
-      </main>
-    );
-  }
-
-  const currentPlaylist = openPlaylistId
-    ? playlists.find((p) => p.id === openPlaylistId) || null
-    : null;
+  const currentPlaylist =
+    openPlaylistId !== null
+      ? playlists.find((p) => p.id === openPlaylistId) ?? null
+      : null;
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
+    <div className="min-h-screen bg-black text-white flex flex-col">
       <Header
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -299,91 +477,164 @@ export default function UserDashboard() {
         setMobileMenuOpen={setMobileMenuOpen}
         mobileSearchOpen={mobileSearchOpen}
         setMobileSearchOpen={setMobileSearchOpen}
-        authUser={{ email: me.email, user_metadata: { display_name: me.display_name, avatar_url: me.avatar_url } }}
+        authUser={{
+          email: me?.email,
+          user_metadata: {
+            display_name: me?.display_name,
+            avatar_url: me?.avatar_url,
+          },
+        }}
         handleLogout={handleLogout}
       />
 
-      <main className="relative overflow-hidden pb-32">
-        {/* Background Effects */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(1100px 550px at 10% -10%, rgba(6,182,212,0.08), transparent 60%), radial-gradient(900px 520px at 110% 15%, rgba(168,85,247,0.08), transparent 60%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.02] [background-image:linear-gradient(to_right,rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,.5)_1px,transparent_1px)] [background-size:64px_64px]"
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 w-full">
+        <ProfileSection
+          displayName={displayName}
+          email={me?.email ?? null}
+          avatarUrl={me?.avatar_url ?? null}
         />
 
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-          {/* Profile Section */}
-          <ProfileSection
-            displayName={displayName}
-            email={me.email}
-            avatarUrl={me.avatar_url}
-          />
-
-          {/* Message */}
-          {msg && (
-            <motion.div
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 backdrop-blur-xl px-5 py-4 text-sm shadow-lg shadow-cyan-500/10"
+        {/* --- Playlists Section --- */}
+        <section id="playlists" className="scroll-mt-24">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent">Your Playlists</h2>
+            <button
+              type="button"
+              onClick={() => openAddToPlaylistModal({ id: 0, title: "Sample Song", artist: "Artist" } as Song)}
+              className="flex items-center justify-center gap-2 h-11 px-5 rounded-full hover:scale-105 bg-white/5 text-white font-bold transition-all active:scale-95 w-full sm:w-auto border border-white/10 hover:border-cyan-500/50"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-                <span className="text-white font-medium">{msg}</span>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Upload & Create Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-15">
-            <UploadSongForm onSubmit={handleAddSong} busy={busy} />
-            <CreatePlaylistForm onSubmit={handleCreatePlaylist} busy={plBusy} />
+              <Plus className="h-5 w-5 text-cyan-400" />
+              <span>Create Playlist</span>
+            </button>
           </div>
+          <PlaylistGrid
+            playlists={playlists}
+            onOpen={openPlaylist}
+            onDelete={deletePlaylist}
+          />
+        </section>
 
-          {/* Playlists Section */}
-          <section className="space-y-6">
-            <div className="flex items-center mt-15 justify-between">
-              <h2 className="text-3xl font-bold">Your Playlists</h2>
-              <span className="text-sm text-zinc-500">
-                {playlists.length} playlist{playlists.length === 1 ? "" : "s"}
-              </span>
-            </div>
-            <PlaylistGrid
-              playlists={playlists}
-              onOpen={openPlaylist}
-              onDelete={deletePlaylist}
-            />
-          </section>
-        </div>
+        {/* --- Liked Songs Section --- */}
+        <section id="liked" className="scroll-mt-24">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-6 bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent flex items-center gap-3">
+            <Heart className="w-8 h-8 text-cyan-500 fill-cyan-500/20 stroke-[2.5]" /> Liked Songs
+          </h2>
+          {likedSongs.length === 0 ? (
+            <p className="text-zinc-500">No liked songs yet.</p>
+          ) : (
+            <div
+              onClick={openLikedSongsModal}
+              className="group relative h-64 w-64 rounded-2xl overflow-hidden cursor-pointer bg-gradient-to-br from-cyan-900/20 to-zinc-900/20 border border-white/5 hover:border-cyan-500/50 transition-all shadow-xl shadow-black/40"
+            >
+              {likedSongs[0]?.song?.cover_image_url ? (
+                <img src={likedSongs[0].song.cover_image_url} alt="Liked" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-40" />
+              ) : (
+                <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
+                  <Heart className="w-16 h-16 text-zinc-800" />
+                </div>
+              )}
 
-        {/* Footer */}
-        <footer className="mt-17 bg-black/50 backdrop-blur-xl">
-          <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-0 text-center">
-            <p className="text-sm text-zinc-500 mb-2">
-              © {new Date().getFullYear()} Hey Melody. All Rights Reserved
-            </p>
-            <p className="text-sm text-zinc-600">
-              Designed & Developed by{" "}
-              <a
-                href="https://github.com/SubhradeepNathGit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-cyan-400 hover:text-cyan-300 transition-colors"
+              {/* Hover Overlay with Icons */}
+              <div
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm z-10"
               >
-                Subhradeep Nath
-              </a>
-            </p>
-          </div>
-        </footer>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openLikedSongsModal();
+                    if (likedSongs.length > 0) {
+                      playFromModal(likedSongs[0].song);
+                    }
+                  }}
+                  className="h-12 w-12 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 hover:border-cyan-400 flex items-center justify-center transition-all hover:scale-110 shadow-lg shadow-cyan-500/10"
+                  title="Play Liked Songs"
+                >
+                  <Play className="w-5 h-5 text-cyan-400 fill-cyan-400/20 ml-0.5" />
+                </button>
+              </div>
+
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+              <div className="absolute bottom-6 left-6 right-6 z-[5]">
+                <div className="flex flex-col">
+                  <div className="h-1 w-8 bg-cyan-500 rounded-full mb-3 opacity-0 group-hover:opacity-100 transition-all group-hover:w-12" />
+                  <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-cyan-400 transition-colors tracking-tight">Liked Songs</h3>
+                  <p className="text-zinc-400 font-medium text-sm">{likedSongs.length} songs</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* --- Albums Section --- */}
+        <section id="albums" className="scroll-mt-24">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent">Albums</h2>
+          {albumList.length === 0 ? (
+            <p className="text-zinc-500">No albums found in your library.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {albumList.map((album) => (
+                <div
+                  key={album.id}
+                  className="relative group cursor-pointer"
+                  onClick={() => openAlbumModal(album.id)}
+                >
+                  <div className="aspect-square relative overflow-hidden rounded-2xl mb-4 bg-zinc-900 shadow-xl border border-white/5 group-hover:border-cyan-500/50 transition-colors">
+                    {album.cover ? (
+                      <img src={album.cover} alt={album.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                        <Disc className="w-12 h-12 text-zinc-600" />
+                      </div>
+                    )}
+
+                    {/* Hover Overlay with Icons */}
+                    <div
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm"
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAlbumModal(album.id);
+                          if (album.songs && album.songs.length > 0) {
+                            playFromModal(album.songs[0]);
+                          }
+                        }}
+                        className="h-12 w-12 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 hover:border-cyan-400 flex items-center justify-center transition-all hover:scale-110"
+                        title="Play Album"
+                      >
+                        <Play className="w-5 h-5 text-cyan-400 fill-cyan-400/20" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteAlbum(album.id);
+                        }}
+                        className="h-12 w-12 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 hover:border-cyan-400 flex items-center justify-center transition-all hover:scale-110"
+                        title="Delete Album"
+                      >
+                        <Trash2 className="w-5 h-5 text-cyan-400" />
+                      </button>
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-white truncate px-1 group-hover:text-cyan-400 transition-colors">{album.name}</h3>
+                  <p className="text-sm text-zinc-400 truncate px-1">{album.artist} • {album.songCount} songs</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* --- Upload Form --- */}
+        <section id="upload" className="pt-8">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-white">Upload Music</h2>
+          <UploadSongForm onSubmit={handleAddSong} busy={busy} />
+        </section>
+
       </main>
 
-      {/* Playlist Modal */}
+      <Footer />
+
+      {/* Playlist Modal (Real Playlists) */}
       {openPlaylistId !== null && (
         <PlaylistModal
           playlist={currentPlaylist}
@@ -396,6 +647,43 @@ export default function UserDashboard() {
           onRemove={(songId) => removeSongFromPlaylist(openPlaylistId, songId)}
         />
       )}
+
+      {/* Virtual Playlist Modal (Liked / Albums) */}
+      {virtualPlaylist && (
+        <PlaylistModal
+          playlist={virtualPlaylist.playlist}
+          songs={virtualPlaylist.songs}
+          onClose={() => setVirtualPlaylist(null)}
+          onPlay={playFromModal}
+          onRemove={
+            virtualPlaylist.playlist.id === -1
+              ? unlikeSong
+              : typeof virtualPlaylist.playlist.id === "string"
+                ? removeSongFromAlbum
+                : undefined
+          }
+        />
+      )}
+
+      {addToPlaylistModal.isOpen && addToPlaylistModal.song && (
+        <AddToPlaylistModal
+          isOpen={addToPlaylistModal.isOpen}
+          songTitle={addToPlaylistModal.song.title}
+          songArtist={addToPlaylistModal.song.artist}
+          playlists={playlists}
+          onClose={closeAddToPlaylistModal}
+          onAddToPlaylist={handleAddToPlaylist}
+          onCreateAndAdd={handleCreateAndAddToPlaylist}
+        />
+      )}
+
+      <DeleteConfirmModal
+        isOpen={!!deleteAlbumDialog}
+        title="Delete Album?"
+        itemName={deleteAlbumDialog?.name || ""}
+        onConfirm={handleConfirmDeleteAlbum}
+        onCancel={() => setDeleteAlbumDialog(null)}
+      />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import LeftSidebar from "./LeftSidebar";
 import SongCard from "./SongCard";
 import NowPlayingSidebar from "./NowPlayingSidebar";
 import AddToPlaylistModal from "./AddToPlaylistModal";
+import AddToAlbumModal from "./dashboard/AddToAlbumModal";
 import Pagination from "./Pagination";
 
 function uniq<T>(arr: T[]): T[] {
@@ -21,6 +22,7 @@ function uniq<T>(arr: T[]): T[] {
 type Filter = { type: "artist"; value: string } | { type: "album"; value: string } | null;
 type Playlist = { id: number; name: string; description?: string | null };
 type LikedRow = { song_id: number };
+type Album = { id: string; user_id: string; name: string; description?: string | null; cover_image_url?: string | null; artist?: string | null; };
 
 export default function AllSongs() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,6 +30,7 @@ export default function AllSongs() {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState<Filter>(null);
   const [pickerForSong, setPickerForSong] = useState<Song | null>(null);
+  const [pickerForAlbumSong, setPickerForAlbumSong] = useState<Song | null>(null);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -69,22 +72,37 @@ export default function AllSongs() {
   const { data: songs, isPending, isError, error } = useQuery({ queryKey: ["allSongs"], queryFn: getAllSongs });
 
   const { data: playlists, isLoading: playlistsLoading } = useQuery({
-    queryKey: ["myPlaylists", authUser?.id],
+    queryKey: ["user-playlists", authUser?.id],
     enabled: !!authUser?.id,
     queryFn: async () => {
       const supabase = getSupabaseClient();
       const { data, error: qErr } = await supabase
         .from("playlists")
-        .select("id,name,description")
+        .select("id,user_id,name,description,is_public,created_at,cover_image_url, playlist_songs ( song_id )")
         .eq("user_id", authUser!.id)
         .order("created_at", { ascending: false });
       if (qErr) throw qErr;
-      return (data ?? []) as Playlist[];
+      return (data ?? []) as unknown as Playlist[];
+    },
+  });
+
+  const { data: albums = [], isLoading: albumsLoading } = useQuery({
+    queryKey: ["user-albums", authUser?.id],
+    enabled: !!authUser?.id,
+    queryFn: async () => {
+      const supabase = getSupabaseClient();
+      const { data, error: qErr } = await supabase
+        .from("albums")
+        .select("id, user_id, name, description, cover_image_url, artist")
+        .eq("user_id", authUser!.id)
+        .order("created_at", { ascending: false });
+      if (qErr) throw qErr;
+      return (data ?? []) as Album[];
     },
   });
 
   const { data: likedRows, isLoading: likedLoading } = useQuery({
-    queryKey: ["likedSongIds", authUser?.id],
+    queryKey: ["user-liked-song-ids", authUser?.id],
     enabled: !!authUser?.id,
     queryFn: async () => {
       const supabase = getSupabaseClient();
@@ -111,7 +129,7 @@ export default function AllSongs() {
       return data as Playlist;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["myPlaylists", authUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-playlists", authUser?.id] });
       toast.success("Playlist created.");
     },
     onError: (e: unknown) => {
@@ -131,11 +149,55 @@ export default function AllSongs() {
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-playlists", authUser?.id] });
       toast.success("Added to playlist");
       setPickerForSong(null);
     },
     onError: (e: unknown) => {
       const msg = e instanceof Error ? e.message : "Couldn't add to playlist";
+      toast.error(msg);
+    },
+  });
+
+  const addToAlbum = useMutation({
+    mutationFn: async ({ song, albumId }: { song: Song; albumId: string }) => {
+      if (!authUser) throw new Error("Please log in to manage albums.");
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.from("album_songs").insert({ album_id: albumId, song_id: song.id });
+      if (error) {
+        const lower = String(error.message).toLowerCase();
+        if (lower.includes("duplicate")) throw new Error("This song is already in that album.");
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-albums", authUser?.id] });
+      toast.success("Added to album");
+      setPickerForAlbumSong(null);
+    },
+    onError: (e: any) => {
+      toast.error(e.message || "Failed to add to album");
+    }
+  });
+
+  const createAlbum = useMutation({
+    mutationFn: async ({ name, artist }: { name: string; artist: string }) => {
+      if (!authUser) throw new Error("Please log in to create an album.");
+      const supabase = getSupabaseClient();
+      const { data, error: mErr } = await supabase
+        .from("albums")
+        .insert({ user_id: authUser.id, name: name.trim(), description: null, artist: artist.trim() || null })
+        .select("id, name")
+        .single();
+      if (mErr) throw mErr;
+      return data as Album;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-albums", authUser?.id] });
+      toast.success("Album created.");
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Couldn't create album";
       toast.error(msg);
     },
   });
@@ -160,19 +222,20 @@ export default function AllSongs() {
       }
     },
     onMutate: async (song: Song) => {
-      await queryClient.cancelQueries({ queryKey: ["likedSongIds", authUser?.id] });
-      const prev = queryClient.getQueryData<LikedRow[]>(["likedSongIds", authUser?.id]) || [];
+      await queryClient.cancelQueries({ queryKey: ["user-liked-song-ids", authUser?.id] });
+      const prev = queryClient.getQueryData<LikedRow[]>(["liked-song-ids", authUser?.id]) || [];
       const isAlready = prev.some((r) => r.song_id === (song.id as unknown as number));
       const next = isAlready ? prev.filter((r) => r.song_id !== (song.id as unknown as number)) : [...prev, { song_id: song.id as unknown as number }];
-      queryClient.setQueryData(["likedSongIds", authUser?.id], next);
+      queryClient.setQueryData(["user-liked-song-ids", authUser?.id], next);
       return { prev };
     },
     onError: (_e: unknown, _song: Song, ctx?: { prev?: LikedRow[] }) => {
-      if (ctx?.prev) queryClient.setQueryData(["likedSongIds", authUser?.id], ctx.prev);
+      if (ctx?.prev) queryClient.setQueryData(["user-liked-song-ids", authUser?.id], ctx.prev);
       toast.error("Couldn't update like");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["likedSongIds", authUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-liked-song-ids", authUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-liked-songs", authUser?.id] });
     },
     onSuccess: (res: { liked: boolean; id: number }) => {
       toast.success(res.liked ? "Added to Liked Songs" : "Removed from Liked Songs");
@@ -186,7 +249,8 @@ export default function AllSongs() {
     const q = searchQuery.trim().toLowerCase();
     const filtered = songs.filter((s) => {
       const matchesSearch = q.length ? s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q) : true;
-      const matchesFilter = activeFilter ? (activeFilter.type === "artist" ? s.artist === activeFilter.value : s.album === activeFilter.value) : true;
+      // Note: Album filtering would require joining with album_songs - skip for now or implement separately
+      const matchesFilter = activeFilter ? (activeFilter.type === "artist" ? s.artist === activeFilter.value : true) : true;
       return matchesSearch && matchesFilter;
     });
     const sorted = filtered.sort((a, b) => {
@@ -204,7 +268,7 @@ export default function AllSongs() {
   const currentSongs = filteredAndSortedSongs.slice(startIndex, startIndex + songsPerPage);
 
   const artists = useMemo(() => (songs ? uniq(songs.map((s) => s.artist)) : []), [songs]);
-  const albums = useMemo(() => (songs ? uniq(songs.map((s) => s.album).filter(Boolean) as string[]) : []), [songs]);
+  const albumNames = useMemo(() => albums.map(a => a.name), [albums]);
 
   const playSong = (song: Song) => {
     if (!player) return;
@@ -338,7 +402,7 @@ export default function AllSongs() {
           <LeftSidebar
             sortOption={sortOption}
             setSortOption={setSortOption}
-            albums={albums}
+            albums={albumNames}
             artists={artists}
             activeFilter={activeFilter}
             setActiveFilter={setActiveFilter}
@@ -362,6 +426,7 @@ export default function AllSongs() {
                         isLiked={isLiked}
                         onPlay={playSong}
                         onAddToPlaylist={openPicker}
+                        onAddToAlbum={(song) => setPickerForAlbumSong(song)}
                         onToggleLike={handleToggleLike}
                         likedLoading={likedLoading}
                         toggleLikePending={toggleLike.isPending}
@@ -393,6 +458,7 @@ export default function AllSongs() {
                         isLiked={isLiked}
                         onPlay={playSong}
                         onAddToPlaylist={openPicker}
+                        onAddToAlbum={(song) => setPickerForAlbumSong(song)}
                         onToggleLike={handleToggleLike}
                         likedLoading={likedLoading}
                         toggleLikePending={toggleLike.isPending}
@@ -429,6 +495,25 @@ export default function AllSongs() {
         handleCreateAndAdd={handleCreateAndAdd}
         createPlaylistPending={createPlaylist.isPending}
         addToPlaylistPending={addToPlaylist.isPending}
+      />
+
+      <AddToAlbumModal
+        isOpen={!!pickerForAlbumSong}
+        songTitle={pickerForAlbumSong?.title ?? ""}
+        songArtist={pickerForAlbumSong?.artist ?? ""}
+        albums={albums}
+        onClose={() => setPickerForAlbumSong(null)}
+        onAddToAlbum={(albumId, albumName) => {
+          if (albumId) {
+            addToAlbum.mutate({ song: pickerForAlbumSong!, albumId });
+          } else {
+            // Create new album then add song
+            createAlbum.mutateAsync({ name: albumName, artist: pickerForAlbumSong?.artist ?? "" }).then((album) => {
+              addToAlbum.mutate({ song: pickerForAlbumSong!, albumId: album.id });
+            });
+          }
+        }}
+        onCreateAlbum={(name) => createAlbum.mutateAsync({ name, artist: pickerForAlbumSong?.artist ?? "" })}
       />
 
       <style jsx global>{`

@@ -9,6 +9,7 @@ type SongCardProps = {
   isLiked: boolean;
   onPlay: (song: Song) => void;
   onAddToPlaylist: (song: Song) => void;
+  onAddToAlbum: (song: Song) => void;
   onToggleLike: (song: Song) => void;
   likedLoading: boolean;
   toggleLikePending: boolean;
@@ -20,6 +21,7 @@ export default function SongCard({
   isLiked,
   onPlay,
   onAddToPlaylist,
+  onAddToAlbum,
   onToggleLike,
   likedLoading,
   toggleLikePending,
@@ -92,22 +94,45 @@ export default function SongCard({
           </svg>
         </button>
 
-        {/* Add to Playlist */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddToPlaylist(song);
-          }}
-          className="
-            absolute right-3 top-3
-            h-8 px-3 rounded-lg text-xs font-medium
-            bg-zinc-900/80 border border-zinc-800
-            hover:bg-zinc-800 hover:border-cyan-500/30
-            backdrop-blur-sm z-10 transition-all
-          "
-        >
-          + Playlist
-        </button>
+        {/* Action Buttons Container */}
+        <div className="absolute right-3 top-3 flex flex-col gap-2 z-10 transition-all">
+          {/* Add to Playlist */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToPlaylist(song);
+            }}
+            className="
+                h-8 w-8 rounded-lg grid place-items-center
+                bg-zinc-900/80 border border-zinc-800
+                hover:bg-zinc-800 hover:border-cyan-500/30
+                backdrop-blur-sm text-zinc-400 hover:text-white
+            "
+            aria-label="Add to Playlist"
+            title="Add to Playlist"
+          >
+            <span className="text-xl leading-none">+</span>
+          </button>
+
+          {/* Add to Album */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToAlbum(song);
+            }}
+            className="
+                h-8 w-8 rounded-lg grid place-items-center
+                bg-zinc-900/80 border border-zinc-800
+                hover:bg-zinc-800 hover:border-cyan-500/30
+                backdrop-blur-sm text-zinc-400 hover:text-white
+            "
+            aria-label="Add to Album"
+            title="Add to Album"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="2" /></svg>
+          </button>
+        </div>
+
 
         {/* Like Button */}
         <button
@@ -205,22 +230,44 @@ export default function SongCard({
         </svg>
       </button>
 
-      {/* Add to Playlist */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onAddToPlaylist(song);
-        }}
-        className="
-          absolute right-3 top-3
-          h-8 px-3 rounded-lg text-xs font-medium
-          bg-zinc-900/80 border border-zinc-800
-          hover:bg-zinc-800 hover:border-cyan-500/30
-          backdrop-blur-sm transition-all
-        "
-      >
-        + Playlist
-      </button>
+      {/* Action Buttons Container */}
+      <div className="absolute right-3 top-3 flex flex-col gap-2 z-10 transition-all">
+        {/* Add to Playlist */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToPlaylist(song);
+          }}
+          className="
+                h-8 w-8 rounded-lg grid place-items-center
+                bg-zinc-900/80 border border-zinc-800
+                hover:bg-zinc-800 hover:border-cyan-500/30
+                backdrop-blur-sm text-zinc-400 hover:text-white
+            "
+          aria-label="Add to Playlist"
+          title="Add to Playlist"
+        >
+          <span className="text-xl leading-none">+</span>
+        </button>
+
+        {/* Add to Album */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToAlbum(song);
+          }}
+          className="
+                h-8 w-8 rounded-lg grid place-items-center
+                bg-zinc-900/80 border border-zinc-800
+                hover:bg-zinc-800 hover:border-cyan-500/30
+                backdrop-blur-sm text-zinc-400 hover:text-white
+            "
+          aria-label="Add to Album"
+          title="Add to Album"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="2" /></svg>
+        </button>
+      </div>
 
       {/* Like Button */}
       <button
