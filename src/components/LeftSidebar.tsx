@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { Library, Music, Heart } from "lucide-react";
 
-type Filter = { type: "artist"; value: string } | null;
+type Filter = { type: "artist"; value: string } | { type: "album"; value: string } | null;
 
 type LeftSidebarProps = {
   sortOption: "title_asc" | "title_desc" | "artist_asc" | "artist_desc";
   setSortOption: (option: "title_asc" | "title_desc" | "artist_asc" | "artist_desc") => void;
+  albums: string[];
   artists: string[];
   activeFilter: Filter;
   setActiveFilter: (filter: Filter) => void;
@@ -17,6 +18,7 @@ type LeftSidebarProps = {
 export default function LeftSidebar({
   sortOption,
   setSortOption,
+  albums,
   artists,
   activeFilter,
   setActiveFilter,
@@ -117,11 +119,10 @@ export default function LeftSidebar({
                       setActiveFilter({ type: "artist", value: ar });
                       setCurrentPage(1);
                     }}
-                    className={`w-full text-left text-sm truncate rounded-xl px-3 py-2 transition-all ${
-                      activeFilter?.type === "artist" && activeFilter.value === ar
-                        ? "bg-cyan-500/20 text-cyan-300"
-                        : "text-zinc-400 hover:bg-white/10 hover:text-white"
-                    }`}
+                    className={`w-full text-left text-sm truncate rounded-xl px-3 py-2 transition-all ${activeFilter?.type === "artist" && activeFilter.value === ar
+                      ? "bg-cyan-500/20 text-cyan-300"
+                      : "text-zinc-400 hover:bg-white/10 hover:text-white"
+                      }`}
                   >
                     {ar}
                   </button>
