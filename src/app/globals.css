@@ -39,3 +39,31 @@ body {
   background: #525252;
 }
 
+@keyframes playing {
+  0%, 100% { height: 0.5rem; }
+  50% { height: 1.25rem; }
+}
+
+.animate-playing-1 {
+  animation: playing 1s ease-in-out infinite;
+}
+
+.animate-playing-2 {
+  animation: playing 1s ease-in-out infinite 0.15s;
+}
+
+.animate-playing-3 {
+  animation: playing 1s ease-in-out infinite 0.3s;
+}
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+.pause-animation {
+  animation-play-state: paused;
+}

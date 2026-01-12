@@ -119,15 +119,14 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
               const isVirtualPlaylist = playlist.id === -1 || typeof playlist.id === 'string';
               const currentPlayingSong = songs?.find(s => s.song.id === playingSongId)?.song;
               const coverUrl = isVirtualPlaylist && currentPlayingSong
-                ? currentPlayingSong.cover_image_url
-                : playlist.cover_image_url;
+                ? (currentPlayingSong.cover_image_url || (currentPlayingSong as any).cover)
+                : (playlist.cover_image_url || (playlist as any).cover);
 
               return coverUrl ? (
                 <Image
                   src={coverUrl}
                   alt={playlist.name}
                   fill
-                  unoptimized
                   className="object-cover"
                   priority
                 />
@@ -228,7 +227,7 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
                     {/* Cover Image */}
                     <div className="relative w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 flex-shrink-0 rounded overflow-hidden">
                       <Image
-                        src={song.cover_image_url}
+                        src={song.cover_image_url || (song as any).cover || "/favicon.ico"}
                         alt={song.title}
                         fill
                         className="object-cover"

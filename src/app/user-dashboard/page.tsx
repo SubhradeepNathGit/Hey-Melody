@@ -51,28 +51,39 @@ function uniq<T>(arr: T[]): T[] {
 }
 
 export default function UserDashboard() {
-  const [me, setMe] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-
-  const [openPlaylistId, setOpenPlaylistId] = useState<number | null>(null);
-  const [openPlaylistSongs, setOpenPlaylistSongs] = useState<PlaylistSongRow[] | null>(null);
-
-  const [deleteAlbumDialog, setDeleteAlbumDialog] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-
-  // For Liked, Album modals - we reuse PlaylistModal by creating a "virtual" playlist
-  const [virtualPlaylist, setVirtualPlaylist] = useState<{ playlist: any; songs: PlaylistSongRow[] } | null>(null);
-
   const queryClient = useQueryClient();
 
+  // Use the same auth query as AllSongs for consistency
+  const { data: authUser, isLoading: authLoading } = useQuery({
+    queryKey: ["authUser"],
+    queryFn: async () => {
+      const supabase = getSupabaseClient();
+      const { data } = await supabase.auth.getUser();
+      return data.user;
+    },
+  });
+
+  const me = useMemo(() => {
+    if (!authUser) return null;
+    return {
+      id: authUser.id,
+      email: authUser.email ?? null,
+      display_name: authUser.user_metadata?.display_name || authUser.user_metadata?.full_name || null,
+      avatar_url: authUser.user_metadata?.avatar_url || null,
+    };
+  }, [authUser]);
+
+  const [busy, setBusy] = useState(false);
+  const [openPlaylistId, setOpenPlaylistId] = useState<number | null>(null);
+  const [openPlaylistSongs, setOpenPlaylistSongs] = useState<PlaylistSongRow[] | null>(null);
+  const [deleteAlbumDialog, setDeleteAlbumDialog] = useState<{ id: string; name: string; } | null>(null);
+  const [virtualPlaylist, setVirtualPlaylist] = useState<{ playlist: any; songs: PlaylistSongRow[] } | null>(null);
 
   // --- Fetch Playlists ---
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
     queryKey: ["user-playlists", me?.id],
     enabled: !!me?.id,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase
@@ -89,6 +100,7 @@ export default function UserDashboard() {
   const { data: likedSongs = [] } = useQuery({
     queryKey: ["user-liked-songs", me?.id],
     enabled: !!me?.id,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase
@@ -108,8 +120,9 @@ export default function UserDashboard() {
 
   // --- Fetch Albums ---
   const { data: albums = [] } = useQuery({
-    queryKey: ["user-albums", me?.id],
+    queryKey: ["user-albums-full", me?.id],
     enabled: !!me?.id,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase
@@ -163,25 +176,6 @@ export default function UserDashboard() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const player = useContext(PlayerContext);
-
-  useEffect(() => {
-    (async () => {
-      const supabase = getSupabaseClient();
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) {
-        setLoading(false);
-        return;
-      }
-      const { id, email, user_metadata } = auth.user;
-      setMe({
-        id,
-        email: email ?? null,
-        display_name: user_metadata?.display_name || user_metadata?.full_name || null,
-        avatar_url: user_metadata?.avatar_url || null,
-      });
-      setLoading(false);
-    })();
-  }, []);
 
   const displayName = useMemo(() => {
     if (!me) return "You";
@@ -331,16 +325,12 @@ export default function UserDashboard() {
     await getSupabaseClient().from("liked_songs").delete().match({ user_id: me.id, song_id: songId });
     queryClient.invalidateQueries({ queryKey: ["user-liked-songs", me.id] });
     queryClient.invalidateQueries({ queryKey: ["user-liked-song-ids", me.id] });
-    // Close modal if empty? or just update
-    // We need to update the virtual playlist state or let react-query handle it
-    // Since virtualPlaylist is state derived from query, it won't auto-update unless we sync it
-    // Or simpler: just close modal or let user close it. 
-    // Better: Update the virtual playlist local state if it's open
+
     setVirtualPlaylist(prev => {
       if (!prev) return null;
       return {
         ...prev,
-        songs: prev.songs.filter(s => s.song.id !== (songId as unknown as number)) // Typo fix
+        songs: prev.songs.filter(s => s.song.id !== (songId as unknown as number))
       }
     });
     toast.success("Removed from Liked Songs");
@@ -356,6 +346,7 @@ export default function UserDashboard() {
       .match({ album_id: albumId, song_id: songId });
 
     queryClient.invalidateQueries({ queryKey: ["user-albums", me?.id] });
+    queryClient.invalidateQueries({ queryKey: ["user-albums-full", me?.id] });
 
     // Update virtual playlist state to remove the song
     setVirtualPlaylist(prev => {
@@ -389,6 +380,7 @@ export default function UserDashboard() {
 
     await getSupabaseClient().from("albums").delete().eq("id", id);
     queryClient.invalidateQueries({ queryKey: ["user-albums", me?.id] });
+    queryClient.invalidateQueries({ queryKey: ["user-albums-full", me?.id] });
 
     // Close modal if it's open for this album
     if (virtualPlaylist && virtualPlaylist.playlist.id === id) {
@@ -454,7 +446,7 @@ export default function UserDashboard() {
     closeAddToPlaylistModal();
   }
 
-  if (loading) {
+  if (authLoading || playlistsLoading) {
     return (
       <main className="min-h-screen grid place-items-center bg-black text-white">
         <div className="h-12 w-12 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
@@ -526,8 +518,8 @@ export default function UserDashboard() {
               onClick={openLikedSongsModal}
               className="group relative h-64 w-64 rounded-2xl overflow-hidden cursor-pointer bg-gradient-to-br from-cyan-900/20 to-zinc-900/20 border border-white/5 hover:border-cyan-500/50 transition-all shadow-xl shadow-black/40"
             >
-              {likedSongs[0]?.song?.cover_image_url ? (
-                <img src={likedSongs[0].song.cover_image_url} alt="Liked" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-40" />
+              {likedSongs[0]?.song?.cover_image_url || (likedSongs[0]?.song as any)?.cover ? (
+                <img src={likedSongs[0].song.cover_image_url || (likedSongs[0].song as any).cover} alt="Liked" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-40" />
               ) : (
                 <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
                   <Heart className="w-16 h-16 text-zinc-800" />

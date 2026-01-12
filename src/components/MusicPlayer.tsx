@@ -9,6 +9,7 @@ import {
   IoMdSkipForward,
   IoMdVolumeHigh,
   IoMdVolumeOff,
+  IoMdVolumeLow,
 } from "react-icons/io";
 import { LuRepeat, LuRepeat1 } from "react-icons/lu";
 import { MdOutlineQueueMusic } from "react-icons/md";
@@ -33,6 +34,7 @@ export default function MusicPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [repeatSong, setRepeatSong] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
 
   const [volume, setVolume] = useState(50);
   const [previousVolume, setPreviousVolume] = useState(50);
@@ -43,11 +45,11 @@ export default function MusicPlayer() {
     const initialVol = Number.isFinite(v) ? Math.min(Math.max(v, 0), 100) : 50;
     setVolume(initialVol);
     setPreviousVolume(initialVol);
-  }, []);
+  }, [currentMusic?.id]);
 
   const currentTrackId = currentMusic?.id ?? "none";
   const audioSrc: string | undefined = currentMusic?.audio_url || undefined;
-  const cover = currentMusic?.cover_image_url ?? "";
+  const cover = currentMusic?.cover_image_url || (currentMusic as any)?.cover || "/favicon.ico";
   const title = currentMusic?.title ?? "";
   const artist = currentMusic?.artist ?? "";
 
@@ -57,7 +59,9 @@ export default function MusicPlayer() {
 
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
-    const onTime = () => setCurrentTime(audio.currentTime || 0);
+    const onTime = () => {
+      if (!isSeeking) setCurrentTime(audio.currentTime || 0);
+    };
     const onMeta = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const onDur = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const onEnded = () => {
@@ -79,11 +83,13 @@ export default function MusicPlayer() {
       audio.removeEventListener("durationchange", onDur);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [playNext]);
+  }, [playNext, isSeeking]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume / 100;
-    if (typeof window !== "undefined") localStorage.setItem("bh_volume", String(volume));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bh_volume", String(volume));
+    }
   }, [volume]);
 
   useEffect(() => {
@@ -135,9 +141,6 @@ export default function MusicPlayer() {
     }
   }, [volume, previousVolume, onVolume]);
 
-  // -------------------------------------------------------
-  // 🎹 KEYBOARD SHORTCUTS ADDED HERE
-  // -------------------------------------------------------
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -146,14 +149,12 @@ export default function MusicPlayer() {
         target.isContentEditable;
       if (typing) return;
 
-      // SPACE → Play / Pause
       if (e.code === "Space") {
         e.preventDefault();
         togglePlay();
         return;
       }
 
-      // LEFT Arrow → Seek -5 sec
       if (e.code === "ArrowLeft") {
         e.preventDefault();
         const a = audioRef.current;
@@ -163,7 +164,6 @@ export default function MusicPlayer() {
         return;
       }
 
-      // RIGHT Arrow → Seek +5 sec
       if (e.code === "ArrowRight") {
         e.preventDefault();
         const a = audioRef.current;
@@ -173,57 +173,54 @@ export default function MusicPlayer() {
         return;
       }
 
-      // UP Arrow → Volume +5
       if (e.code === "ArrowUp") {
         e.preventDefault();
         onVolume(Math.min(100, volume + 5));
         return;
       }
 
-      // DOWN Arrow → Volume -5
       if (e.code === "ArrowDown") {
         e.preventDefault();
         onVolume(Math.max(0, volume - 5));
         return;
       }
 
-      // M → Mute / Unmute
       if (e.key.toLowerCase() === "m") {
         e.preventDefault();
         toggleMute();
         return;
       }
 
-      // Q → Toggle queue
       if (e.key.toLowerCase() === "q") {
         e.preventDefault();
         setQueueModalOpen(!isQueueModalOpen);
-        return;
       }
     };
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [isPlaying, volume, isQueueModalOpen, togglePlay, toggleMute, onVolume, setQueueModalOpen]);
-  // -------------------------------------------------------
+  }, [volume, isQueueModalOpen, togglePlay, toggleMute, onVolume, setQueueModalOpen]);
 
   const isVisible = Boolean(currentMusic && audioSrc);
   const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
   const safeCurrent = Math.min(currentTime, safeDuration);
+  const progressPercent = safeDuration > 0 ? (safeCurrent / safeDuration) * 100 : 0;
+
+  const VolumeIcon =
+    volume === 0 ? IoMdVolumeOff : volume < 50 ? IoMdVolumeLow : IoMdVolumeHigh;
 
   return (
     <>
       <Queue />
       <div
-        className={`fixed bottom-0 left-0 w-full px-3 sm:px-6 py-2 sm:py-4 z-50
-                    pb-[calc(env(safe-area-inset-bottom)+0.5rem)]
-                    bg-gradient-to-r from-black/40 to-black/10 
-                    backdrop-blur-md border-t border-white/20
+        className={`fixed bottom-0 left-0 w-full z-50
+                    pb-[calc(env(safe-area-inset-bottom)+0.1rem)]
+                    bg-black/70 backdrop-blur-xl 
                     transition-all duration-300
                     ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full pointer-events-none"}`}
       >
         <audio
-          key={`audio-${currentTrackId}`}
+          key={currentTrackId}
           ref={audioRef}
           src={audioSrc}
           preload="metadata"
@@ -231,56 +228,118 @@ export default function MusicPlayer() {
           crossOrigin="anonymous"
         />
 
-        <div className="max-w-7xl w-full mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-5">
-          <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
-            <Image
-              src={cover || "/favicon.ico"}
-              alt={title ? `${title} cover` : "cover"}
-              width={56}
-              height={56}
-              className="w-10 h-10 sm:w-14 sm:h-14 object-cover rounded-md shadow"
-              priority
-            />
-            <div className="min-w-0">
-              <p className="font-semibold text-[13px] sm:text-base truncate">{title || "\u00A0"}</p>
-              <p className="text-neutral-400 text-xs sm:text-sm truncate">{artist || "\u00A0"}</p>
-            </div>
-          </div>
+        <div className="max-w-full mx-auto px-2 sm:px-4 py-3 lg:py-5 flex flex-col gap-2">
+          {/* Main Controls Row: 3 Sections */}
+          <div className="grid grid-cols-[1fr_auto_1fr] sm:grid-cols-3 items-center gap-2 sm:gap-4 md:gap-6">
 
-          <div className="w-full sm:max-w-[480px] flex flex-col items-center gap-1.5 sm:gap-2">
-            <div className="flex gap-3 sm:gap-6 items-center">
+            {/* Section 1: Track Info (Left) */}
+            <div className="flex items-center gap-2 sm:gap-3 mr-6 ml-4 min-w-0">
+              <div className="relative shrink-0 overflow-hidden rounded-md shadow-lg h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 ring-1 ring-white/10">
+                <Image
+                  src={cover || "/favicon.ico"}
+                  alt={title || "Now playing"}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <div className="min-w-0 flex-1 flex flex-col justify-center">
+                <div className="overflow-hidden relative h-4 sm:h-6">
+                  <div className={`flex whitespace-nowrap ${title.length > 8 ? "animate-marquee" : ""}`}>
+                    <span className="font-semibold text-[11px] sm:text-base text-white pr-5">
+                      {title || "\u00A0"}
+                    </span>
+                    {title.length > 8 && (
+                      <span className="font-semibold text-[11px] sm:text-base text-white pr-5">
+                        {title}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-zinc-500 text-[9px] sm:text-sm truncate">
+                  {artist || "\u00A0"}
+                </p>
+              </div>
+            </div>
+
+            {/* Section 2: Playback Controls (Center) */}
+            <div className="flex items-center justify-center gap-3 sm:gap-6 md:gap-8">
               <button
-                className="text-lg sm:text-2xl text-neutral-400 hover:text-white disabled:opacity-40"
                 onClick={playPrev}
-                disabled={!isVisible}
-                aria-label="Previous"
+                className="text-lg sm:text-3xl text-zinc-400 hover:text-white transition-all hover:scale-110 active:scale-95"
+                title="Previous"
               >
                 <IoMdSkipBackward />
               </button>
 
               <button
-                className="bg-cyan-500 text-white text-lg sm:text-2xl w-10 h-10 sm:w-14 sm:h-14 rounded-full grid place-items-center shadow-2xl hover:scale-110 transition-all duration-200 disabled:opacity-60"
                 onClick={togglePlay}
-                disabled={!isVisible}
-                aria-label={isPlaying ? "Pause" : "Play"}
+                className="bg-cyan-600 text-white text-lg sm:text-2xl w-12 h-12 sm:w-16 sm:h-16 md:w-14 md:h-14 rounded-full flex items-center justify-center hover:scale-110 active:scale-90 transition-all duration-200"
+                title={isPlaying ? "Pause" : "Play"}
               >
-                {isPlaying ? <IoMdPause /> : <IoMdPlay className="translate-x-[1px]" />}
+                {isPlaying ? <IoMdPause /> : <IoMdPlay className="translate-x-[2px]" />}
               </button>
 
               <button
-                className="text-lg sm:text-2xl text-neutral-400 hover:text-white disabled:opacity-40"
                 onClick={playNext}
-                disabled={!isVisible}
-                aria-label="Next"
+                className="text-lg sm:text-2xl text-zinc-400 hover:text-white transition-all hover:scale-110 active:scale-95"
+                title="Next"
               >
                 <IoMdSkipForward />
               </button>
             </div>
 
-            <div className="w-full flex items-center gap-2 text-xs sm:text-sm">
-              <span className="hidden sm:block text-neutral-400 w-10 text-right">
-                {formatTime(safeCurrent)}
-              </span>
+            {/* Section 3: Right Controls (Settings) */}
+            <div className="flex items-center justify-end gap-2 mr-5 sm:gap-4">
+              <button
+                onClick={() => setRepeatSong(!repeatSong)}
+                className={`text-base sm:text-xl transition-all hover:scale-110 ${repeatSong ? "text-cyan-400" : "text-zinc-400 hover:text-white"}`}
+                title="Repeat"
+              >
+                {repeatSong ? <LuRepeat1 /> : <LuRepeat />}
+              </button>
+
+              <button
+                onClick={() => setQueueModalOpen(!isQueueModalOpen)}
+                className={`text-base sm:text-xl transition-all hover:scale-110 ${isQueueModalOpen ? "text-cyan-400" : "text-zinc-400 hover:text-white"}`}
+                title="Queue (Q)"
+              >
+                <MdOutlineQueueMusic />
+              </button>
+
+              <button
+                onClick={toggleMute}
+                className="text-zinc-400 hover:text-white text-base sm:text-xl transition-all hover:scale-110"
+                title="Volume"
+              >
+                <VolumeIcon />
+              </button>
+
+              {/* Desktop Volume Slider */}
+              <div className="hidden md:block w-20 lg:w-24 group/vol">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={volume}
+                  onChange={(e) => onVolume(Number(e.target.value))}
+                  onInput={(e) => onVolume(Number((e.target as HTMLInputElement).value))}
+                  className="w-full h-1 rounded-full cursor-pointer appearance-none bg-white/10"
+                  style={{
+                    background: `linear-gradient(to right, rgb(6 182 212) ${volume}%, rgba(255,255,255,0.1) ${volume}%)`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Progress Bar Section  */}
+          <div className="w-full flex items-center gap-2 sm:gap-3 px-5 sm:px-10 lg:px-95 mt-1">
+            <span className="text-[10px] text-zinc-500 w-8 text-right tabular-nums opacity-60">
+              {formatTime(safeCurrent)}
+            </span>
+
+            <div className="relative flex-1 h-3 flex items-center group cursor-pointer">
               <input
                 type="range"
                 min={0}
@@ -289,79 +348,41 @@ export default function MusicPlayer() {
                 value={safeCurrent}
                 onChange={(e) => onSeek(Number(e.target.value))}
                 onInput={(e) => onSeek(Number((e.target as HTMLInputElement).value))}
-                className="
-                  w-full h-1.5 rounded-full cursor-pointer appearance-none
-                  bg-zinc-700
-                  [&::-webkit-slider-thumb]:appearance-none
-                  [&::-webkit-slider-thumb]:h-3
-                  [&::-webkit-slider-thumb]:w-3
-                  [&::-webkit-slider-thumb]:rounded-full
-                  [&::-webkit-slider-thumb]:bg-white
-                  [&::-moz-range-thumb]:h-3
-                  [&::-moz-range-thumb]:w-3
-                  [&::-moz-range-thumb]:rounded-full
-                  [&::-moz-range-thumb]:bg-white
-                "
+                onMouseDown={() => setIsSeeking(true)}
+                onMouseUp={() => setIsSeeking(false)}
+                className="w-full h-1 sm:h-1.5 rounded-full appearance-none bg-white/5 group-hover:bg-white/10 transition-colors"
+                style={{
+                  background: `linear-gradient(to right, hsla(189, 95%, 43%, 0.66) ${progressPercent}%, rgba(255,255,255,0.05) ${progressPercent}%)`,
+                }}
               />
-              <span className="hidden sm:block text-neutral-400 w-10">
-                {formatTime(safeDuration)}
-              </span>
+              {/* Custom thumb/marker if needed, currently using appearance-none */}
             </div>
-          </div>
 
-          <div className="flex items-center gap-2.5 sm:gap-4">
-            <button
-              className={`text-base sm:text-xl ${repeatSong ? "text-cyan-400" : "text-neutral-400 hover:text-white"}`}
-              onClick={() => setRepeatSong((r) => !r)}
-              title="Repeat"
-              aria-pressed={repeatSong}
-            >
-              {repeatSong ? <LuRepeat1 /> : <LuRepeat />}
-            </button>
-
-            <button
-              className="text-neutral-400 text-base sm:text-xl hover:text-white"
-              onClick={() => setQueueModalOpen(!isQueueModalOpen)}
-              title="Open queue"
-              aria-expanded={isQueueModalOpen}
-            >
-              <MdOutlineQueueMusic className="text-cyan-400" />
-            </button>
-
-            <button
-              className="text-neutral-400 text-base sm:text-xl hover:text-white"
-              onClick={toggleMute}
-              title={volume === 0 ? "Unmute" : "Mute"}
-              aria-pressed={volume === 0}
-            >
-              {volume === 0 ? <IoMdVolumeOff /> : <IoMdVolumeHigh />}
-            </button>
-
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={volume}
-              onChange={(e) => onVolume(Number(e.target.value))}
-              onInput={(e) => onVolume(Number((e.target as HTMLInputElement).value))}
-              className="
-                hidden sm:block
-                w-[120px] h-1.5 rounded-full cursor-pointer appearance-none
-                bg-zinc-700
-                [&::-webkit-slider-thumb]:appearance-none
-                [&::-webkit-slider-thumb]:h-3
-                [&::-webkit-slider-thumb]:w-3
-                [&::-webkit-slider-thumb]:rounded-full
-                [&::-webkit-slider-thumb]:bg-white
-                [&::-moz-range-thumb]:h-3
-                [&::-moz-range-thumb]:w-3
-                [&::-moz-range-thumb]:rounded-full
-                [&::-moz-range-thumb]:bg-white
-              "
-            />
+            <span className="text-[10px] text-zinc-500 w-8 tabular-nums opacity-60">
+              {formatTime(safeDuration)}
+            </span>
           </div>
         </div>
       </div>
+
+
+      <style jsx global>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        
+        @-webkit-keyframes marquee {
+          0% { -webkit-transform: translateX(0); }
+          100% { -webkit-transform: translateX(-50%); }
+        }
+        
+        .animate-marquee {
+          animation: marquee 8s linear infinite;
+          -webkit-animation: marquee 8s linear infinite;
+          will-change: transform;
+        }
+      `}</style>
     </>
   );
 }

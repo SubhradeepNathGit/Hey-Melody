@@ -69,11 +69,16 @@ export default function AllSongs() {
     return data as Song[];
   };
 
-  const { data: songs, isPending, isError, error } = useQuery({ queryKey: ["allSongs"], queryFn: getAllSongs });
+  const { data: songs, isPending, isError, error } = useQuery({
+    queryKey: ["allSongs"],
+    queryFn: getAllSongs,
+    placeholderData: (prev) => prev
+  });
 
   const { data: playlists, isLoading: playlistsLoading } = useQuery({
     queryKey: ["user-playlists", authUser?.id],
     enabled: !!authUser?.id,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const supabase = getSupabaseClient();
       const { data, error: qErr } = await supabase
@@ -89,6 +94,7 @@ export default function AllSongs() {
   const { data: albums = [], isLoading: albumsLoading } = useQuery({
     queryKey: ["user-albums", authUser?.id],
     enabled: !!authUser?.id,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const supabase = getSupabaseClient();
       const { data, error: qErr } = await supabase
@@ -101,18 +107,18 @@ export default function AllSongs() {
     },
   });
 
-  const { data: likedRows, isLoading: likedLoading } = useQuery({
+  const { data: likedSet = new Set<number>(), isLoading: likedLoading } = useQuery({
     queryKey: ["user-liked-song-ids", authUser?.id],
     enabled: !!authUser?.id,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const supabase = getSupabaseClient();
       const { data, error: qErr } = await supabase.from("liked_songs").select("song_id").eq("user_id", authUser!.id);
       if (qErr) throw qErr;
       return (data ?? []) as LikedRow[];
     },
+    select: (data) => new Set(data.map(r => r.song_id))
   });
-
-  const likedSet = useMemo(() => new Set((likedRows ?? []).map((r) => r.song_id)), [likedRows]);
 
   const queryClient = useQueryClient();
 
@@ -160,18 +166,32 @@ export default function AllSongs() {
   });
 
   const addToAlbum = useMutation({
-    mutationFn: async ({ song, albumId }: { song: Song; albumId: string }) => {
+    mutationFn: async ({ song, albumId, forceCoverUpdate }: { song: Song; albumId: string; forceCoverUpdate?: boolean }) => {
       if (!authUser) throw new Error("Please log in to manage albums.");
       const supabase = getSupabaseClient();
+
+      // 1. Add song to album_songs
       const { error } = await supabase.from("album_songs").insert({ album_id: albumId, song_id: song.id });
       if (error) {
         const lower = String(error.message).toLowerCase();
         if (lower.includes("duplicate")) throw new Error("This song is already in that album.");
         throw error;
       }
+
+      // 2. Update cover if requested or if album has no cover in current state
+      const album = albums.find(a => String(a.id) === String(albumId));
+      const shouldUpdateCover = forceCoverUpdate || (album && !album.cover_image_url);
+
+      if (shouldUpdateCover && (song.cover_image_url || (song as any).cover)) {
+        await supabase
+          .from("albums")
+          .update({ cover_image_url: song.cover_image_url || (song as any).cover })
+          .eq("id", albumId);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-albums", authUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-albums-full", authUser?.id] });
       toast.success("Added to album");
       setPickerForAlbumSong(null);
     },
@@ -194,6 +214,7 @@ export default function AllSongs() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-albums", authUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-albums-full", authUser?.id] });
       toast.success("Album created.");
     },
     onError: (e: unknown) => {
@@ -223,7 +244,7 @@ export default function AllSongs() {
     },
     onMutate: async (song: Song) => {
       await queryClient.cancelQueries({ queryKey: ["user-liked-song-ids", authUser?.id] });
-      const prev = queryClient.getQueryData<LikedRow[]>(["liked-song-ids", authUser?.id]) || [];
+      const prev = queryClient.getQueryData<LikedRow[]>(["user-liked-song-ids", authUser?.id]) || [];
       const isAlready = prev.some((r) => r.song_id === (song.id as unknown as number));
       const next = isAlready ? prev.filter((r) => r.song_id !== (song.id as unknown as number)) : [...prev, { song_id: song.id as unknown as number }];
       queryClient.setQueryData(["user-liked-song-ids", authUser?.id], next);
@@ -249,7 +270,6 @@ export default function AllSongs() {
     const q = searchQuery.trim().toLowerCase();
     const filtered = songs.filter((s) => {
       const matchesSearch = q.length ? s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q) : true;
-      // Note: Album filtering would require joining with album_songs - skip for now or implement separately
       const matchesFilter = activeFilter ? (activeFilter.type === "artist" ? s.artist === activeFilter.value : true) : true;
       return matchesSearch && matchesFilter;
     });
@@ -322,12 +342,12 @@ export default function AllSongs() {
 
   if (isPending) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-900 p-4 lg:p-6">
-        <div className="h-10 w-56 bg-zinc-900/50 rounded-lg mb-6 animate-pulse" />
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_380px]">
-          <div className="h-[70vh] bg-zinc-900/30 rounded-2xl animate-pulse backdrop-blur-xl" />
-          <div className="h-[70vh] bg-zinc-900/30 rounded-2xl animate-pulse backdrop-blur-xl" />
-          <div className="h-[70vh] bg-zinc-900/30 rounded-2xl animate-pulse backdrop-blur-xl" />
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-900 p-3 sm:p-4 lg:p-6">
+        <div className="h-8 sm:h-10 w-40 sm:w-56 bg-zinc-900/50 rounded-lg mb-4 sm:mb-6 animate-pulse" />
+        <div className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_380px]">
+          <div className="h-[50vh] sm:h-[60vh] lg:h-[70vh] bg-zinc-900/30 rounded-xl sm:rounded-2xl animate-pulse backdrop-blur-xl" />
+          <div className="h-[50vh] sm:h-[60vh] lg:h-[70vh] bg-zinc-900/30 rounded-xl sm:rounded-2xl animate-pulse backdrop-blur-xl" />
+          <div className="hidden lg:block h-[70vh] bg-zinc-900/30 rounded-2xl animate-pulse backdrop-blur-xl" />
         </div>
       </div>
     );
@@ -335,13 +355,13 @@ export default function AllSongs() {
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-900 p-6 grid place-items-center">
-        <div className="text-center space-y-4 p-8 rounded-2xl bg-zinc-900/50 backdrop-blur-xl border border-zinc-800/50">
-          <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
-            <AlertTriangle className="w-8 h-8 text-red-500" />
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-900 p-4 sm:p-6 grid place-items-center">
+        <div className="text-center space-y-3 sm:space-y-4 p-6 sm:p-8 rounded-xl sm:rounded-2xl bg-zinc-900/50 backdrop-blur-xl border border-zinc-800/50 max-w-md">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
           </div>
-          <h2 className="text-white text-2xl font-bold">Something went wrong</h2>
-          <p className="text-zinc-400">{(error as Error).message}</p>
+          <h2 className="text-white text-xl sm:text-2xl font-bold">Something went wrong</h2>
+          <p className="text-zinc-400 text-sm sm:text-base">{(error as Error).message}</p>
         </div>
       </div>
     );
@@ -378,15 +398,15 @@ export default function AllSongs() {
         handleLogout={handleLogout}
       />
 
-      <div className="mx-auto max-w-[1920px] p-4 lg:p-8 pt-6">
+      <div className="mx-auto max-w-[1920px] p-3 sm:p-4 md:p-6 lg:p-8 pt-3 sm:pt-4 md:pt-5 lg:pt-6">
         {activeFilter && (
-          <div className="mb-6">
+          <div className="mb-3 sm:mb-4 md:mb-6">
             <button
               onClick={() => {
                 setActiveFilter(null);
                 setCurrentPage(1);
               }}
-              className="inline-flex items-center gap-2 text-sm px-4 h-9 rounded-lg bg-zinc-900/50 backdrop-blur-xl border border-cyan-500/30 hover:bg-zinc-800/50 hover:border-cyan-500/50 transition-colors duration-200 group"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm px-3 sm:px-4 h-8 sm:h-9 rounded-lg bg-zinc-900/50 backdrop-blur-xl border border-cyan-500/30 hover:bg-zinc-800/50 hover:border-cyan-500/50 transition-colors duration-200 group"
             >
               <span className="text-zinc-400">{activeFilter.type === "artist" ? "Artist" : "Album"}:</span>
               <span className="font-medium text-cyan-400">{activeFilter.value}</span>
@@ -395,7 +415,7 @@ export default function AllSongs() {
           </div>
         )}
 
-        <div className={`grid gap-6 ${isPlayingSomething
+        <div className={`grid gap-3 sm:gap-4 md:gap-5 lg:gap-6 ${isPlayingSomething
           ? "grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_400px]"
           : "grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]"
           }`}>
@@ -410,17 +430,17 @@ export default function AllSongs() {
           />
 
           <main className="min-w-0">
-            <section className="mb-10">
-              <div className="flex justify-between items-center mb-5">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-cyan-100 to-zinc-400 bg-clip-text text-transparent">
+            <section className="mb-5 sm:mb-6 md:mb-8 lg:mb-10">
+              <div className="flex justify-between items-center mb-3 sm:mb-4 md:mb-5">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
                   Recently played
                 </h2>
               </div>
-              <div className="flex overflow-x-auto pb-3 gap-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent hover:scrollbar-thumb-zinc-700 [&>*]:shrink-0">
-                {filteredAndSortedSongs.slice(0, 10).map((song) => {
+              <div className="flex overflow-x-auto pb-2 sm:pb-3 gap-2.5 sm:gap-3 md:gap-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent hover:scrollbar-thumb-zinc-700 [&>*]:shrink-0">
+                {filteredAndSortedSongs.slice(0, 10).map((song, idx) => {
                   const isLiked = !!authUser && likedSet.has(song.id as unknown as number);
                   return (
-                    <div key={`recent-${song.id}`}>
+                    <div key={`recent-${song.id}-${idx}`}>
                       <SongCard
                         song={song}
                         isLiked={isLiked}
@@ -436,23 +456,23 @@ export default function AllSongs() {
                   );
                 })}
                 {filteredAndSortedSongs.length === 0 && (
-                  <div className="text-zinc-500 py-8 px-4">No songs found.</div>
+                  <div className="text-zinc-500 py-6 sm:py-8 px-4 text-sm sm:text-base">No songs found.</div>
                 )}
               </div>
             </section>
 
-            <section className="pb-32">
-              <h3 className="text-xl font-bold mb-5 bg-gradient-to-r from-white via-cyan-100 to-zinc-400 bg-clip-text text-transparent">
-                All songs
+            <section className="pb-8 sm:pb-10 md:pb-16 lg:pb-28">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4 md:mb-5 text-white">
+                Browse All Tracks
               </h3>
-              <div className={`grid gap-5 items-stretch ${isPlayingSomething
-                ? "grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3"
-                : "grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5"
+              <div className={`grid gap-3 sm:gap-4 md:gap-5 items-stretch ${isPlayingSomething
+                ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3"
+                : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5"
                 }`}>
-                {currentSongs.map((song) => {
+                {currentSongs.map((song, idx) => {
                   const isLiked = !!authUser && likedSet.has(song.id as unknown as number);
                   return (
-                    <div key={song.id}>
+                    <div key={`browse-${song.id}-${idx}`}>
                       <SongCard
                         song={song}
                         isLiked={isLiked}
@@ -507,9 +527,9 @@ export default function AllSongs() {
           if (albumId) {
             addToAlbum.mutate({ song: pickerForAlbumSong!, albumId });
           } else {
-            // Create new album then add song
             createAlbum.mutateAsync({ name: albumName, artist: pickerForAlbumSong?.artist ?? "" }).then((album) => {
-              addToAlbum.mutate({ song: pickerForAlbumSong!, albumId: album.id });
+              // Pass forceCoverUpdate since this is a new album
+              addToAlbum.mutate({ song: pickerForAlbumSong!, albumId: album.id, forceCoverUpdate: true });
             });
           }
         }}
@@ -518,7 +538,13 @@ export default function AllSongs() {
 
       <style jsx global>{`
         .scrollbar-thin::-webkit-scrollbar {
-          height: 8px;
+          height: 6px;
+        }
+
+        @media (min-width: 640px) {
+          .scrollbar-thin::-webkit-scrollbar {
+            height: 8px;
+          }
         }
 
         .scrollbar-thin::-webkit-scrollbar-track {
@@ -532,12 +558,6 @@ export default function AllSongs() {
 
         .scrollbar-thin:hover::-webkit-scrollbar-thumb {
           background: rgb(63, 63, 70);
-        }
-
-        @media (max-width: 480px) {
-          .xs\\:grid-cols-2 {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
         }
       `}</style>
     </div>

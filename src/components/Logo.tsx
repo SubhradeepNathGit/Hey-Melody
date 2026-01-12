@@ -2,22 +2,28 @@ import React from "react";
 
 export default function Logo() {
   return (
-    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 grid place-items-center shadow-lg shadow-cyan-500/20">
+    <div
+      className="
+        grid place-items-center
+        rounded-xl
+        bg-gradient-to-br from-cyan-400 to-cyan-600
+        
+        w-8 h-8        /* mobile */
+        sm:w-9 sm:h-9  /* small tablets */
+        md:w-10 md:h-10 /* tablets */
+        lg:w-10 lg:h-10 /* desktop */
+        
+      "
+    >
       <svg
-        className="w-6 h-6"
         viewBox="0 0 24 24"
-        fill="white"
-        style={{
-          filter: `
-            drop-shadow(0 1px 1px rgba(255,255,255,0.4))
-            drop-shadow(0 3px 6px rgba(0,0,0,0.45))
-          `,
-        }}
+        className="w-3/4 h-3/4"
+        preserveAspectRatio="xMidYMid meet"
       >
         <defs>
           <linearGradient id="icon3dWhite" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="white" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="white" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="white" stopOpacity="0.8" />
           </linearGradient>
         </defs>
 

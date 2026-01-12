@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Library, Music, Heart } from "lucide-react";
+import CustomDropdown from "./CustomDropdown";
 
 type Filter = { type: "artist"; value: string } | { type: "album"; value: string } | null;
 
@@ -14,6 +15,13 @@ type LeftSidebarProps = {
   setActiveFilter: (filter: Filter) => void;
   setCurrentPage: (page: number) => void;
 };
+
+const SORT_OPTIONS = [
+  { value: "title_asc", label: "Title A → Z" },
+  { value: "title_desc", label: "Title Z → A" },
+  { value: "artist_asc", label: "Artist A → Z" },
+  { value: "artist_desc", label: "Artist Z → A" },
+];
 
 export default function LeftSidebar({
   sortOption,
@@ -29,22 +37,14 @@ export default function LeftSidebar({
       {/* =========================
           MOBILE / TABLET CONTROLS
       ========================== */}
-      <div className="lg:hidden mb-6 space-y-4">
-        {/* Sort */}
-        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 shadow-lg">
-          <p className="text-xs uppercase tracking-wider text-zinc-400 mb-2 font-semibold">
-            Sort songs
-          </p>
-          <select
+      <div className="lg:hidden mb-4 sm:mb-6">
+        <div className="bg-zinc-900/80 border border-white/10 rounded-2xl p-4 shadow-lg">
+          <CustomDropdown
+            label="Sort songs"
+            options={SORT_OPTIONS}
             value={sortOption}
-            onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
-            className="w-full h-11 rounded-xl bg-black/40 border border-white/10 px-3 text-sm text-white focus:ring-2 focus:ring-cyan-500/30 transition-all"
-          >
-            <option value="title_asc">Title A → Z</option>
-            <option value="title_desc">Title Z → A</option>
-            <option value="artist_asc">Artist A → Z</option>
-            <option value="artist_desc">Artist Z → A</option>
-          </select>
+            onChange={(val) => setSortOption(val as any)}
+          />
         </div>
       </div>
 
@@ -54,26 +54,21 @@ export default function LeftSidebar({
       <aside className="hidden lg:block pb-28">
         <div className="sticky top-24 space-y-4">
           {/* Library */}
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-5 shadow-2xl">
+          <div className="bg-zinc-900/80 border border-white/10 rounded-2xl p-5 shadow-2xl">
             <h3 className="text-sm font-bold text-zinc-200 mb-4 flex items-center gap-2">
               <Library className="w-5 h-5 text-cyan-400" />
               Your Library
             </h3>
 
-            <select
+            <CustomDropdown
+              options={SORT_OPTIONS}
               value={sortOption}
-              onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
-              className="w-full h-11 rounded-xl bg-black/40 border border-white/10 px-3 text-sm text-white focus:ring-2 focus:ring-cyan-500/30 transition-all"
-            >
-              <option value="title_asc">Title A → Z</option>
-              <option value="title_desc">Title Z → A</option>
-              <option value="artist_asc">Artist A → Z</option>
-              <option value="artist_desc">Artist Z → A</option>
-            </select>
+              onChange={(val) => setSortOption(val as any)}
+            />
           </div>
 
           {/* Playlists */}
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-5 shadow-2xl">
+          <div className="max-h-45 bg-zinc-900/80 border border-white/10 rounded-2xl p-5 shadow-2xl">
             <p className="text-zinc-400 text-xs uppercase tracking-wider font-semibold mb-3">
               Playlists
             </p>
@@ -106,14 +101,14 @@ export default function LeftSidebar({
           </div>
 
           {/* Artists */}
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-5 shadow-2xl">
+          <div className="bg-zinc-900/80 border border-white/10 rounded-2xl p-5 shadow-2xl">
             <p className="text-zinc-400 text-xs uppercase tracking-wider font-semibold mb-3">
               Artists
             </p>
 
-            <ul className="max-h-68 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 space-y-1 pr-2">
-              {artists.map((ar) => (
-                <li key={ar}>
+            <ul className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 space-y-1 pr-2">
+              {artists.map((ar, idx) => (
+                <li key={`${ar}-${idx}`}>
                   <button
                     onClick={() => {
                       setActiveFilter({ type: "artist", value: ar });

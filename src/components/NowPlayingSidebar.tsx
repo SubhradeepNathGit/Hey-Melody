@@ -22,6 +22,7 @@ export default function NowPlayingSidebar({
   return (
     <aside
       className={`
+        hidden lg:block
         transition-all duration-300
         lg:sticky lg:top-20
         
@@ -35,23 +36,33 @@ export default function NowPlayingSidebar({
     backdrop-blur-xl bg-white/5
     border border-white/10
     rounded-2xl
-    p-4 sm:p-5
-    shadow-2xl
+    p-4 lg:p-4
+   
     lg:max-w-sm
     mx-auto
 
     min-h-[420px]
     sm:min-h-[460px]
-    lg:min-h-[520px]
+    lg:min-h-[546px]
+
+     -mt-20 sm:-mt-0 lg:mt-0 mb-40 sm:mb-0 lg:mb-0
   "
       >
 
 
         {/* Header */}
-        <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+        <h3 className="text-md font-semibold text-zinc-300 mb-4 mt-1 flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+
           Now Playing
+
+          <div className="flex items-center gap-1">
+                  <span className="w-0.5 h-3 bg-cyan-400 rounded-full animate-playing-1" />
+                  <span className="w-0.5 h-5 bg-cyan-400 rounded-full animate-playing-2" />
+                  <span className="w-0.5 h-4 bg-cyan-400 rounded-full animate-playing-3" />
+                </div>
         </h3>
+
 
         {isPlayingSomething && previewSong ? (
           <div className="space-y-4">
@@ -61,15 +72,17 @@ export default function NowPlayingSidebar({
                 className="
                   aspect-square
                   w-full
+                  h-full
                   overflow-hidden
                   rounded-xl
                   bg-black/40
-                  shadow-2xl
+                 
                 "
               >
                 {(() => {
                   const videoUrl = getVideoUrl(previewSong);
-                  return videoUrl ? (
+                  const coverUrl = previewSong.cover_image_url || (previewSong as any).cover || "/favicon.ico";
+                  return videoUrl && videoUrl.length > 5 ? (
                     <video
                       src={videoUrl}
                       className="h-full w-full object-cover"
@@ -81,7 +94,7 @@ export default function NowPlayingSidebar({
                     />
                   ) : (
                     <Image
-                      src={previewSong.cover_image_url}
+                      src={coverUrl}
                       alt={`${previewSong.title} cover`}
                       width={800}
                       height={1000}
@@ -117,7 +130,7 @@ export default function NowPlayingSidebar({
             </div>
 
             {/* Song Info */}
-            <div className="space-y-1 px-1">
+            <div className="space-y-1 mt-7 px-1">
               <h4 className="text-base sm:text-lg font-semibold leading-tight line-clamp-2 text-white">
                 {previewSong.title}
               </h4>
@@ -132,6 +145,11 @@ export default function NowPlayingSidebar({
           </p>
         )}
       </div>
+
+
     </aside>
+
+
   );
+
 }
