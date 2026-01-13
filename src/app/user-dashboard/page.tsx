@@ -455,8 +455,11 @@ export default function UserDashboard() {
   }
 
   async function deletePlaylist(playlistId: number) {
-    await getSupabaseClient().from("playlists").delete().eq("id", playlistId);
-    queryClient.invalidateQueries({ queryKey: ["myPlaylists", me?.id] });
+    const supabase = getSupabaseClient();
+    await supabase.from("playlists").delete().eq("id", playlistId);
+
+    // Fix: Using the correct query key from the fetch query (line 84)
+    queryClient.invalidateQueries({ queryKey: ["user-playlists", me?.id] });
 
     if (openPlaylistId === playlistId) {
       setOpenPlaylistId(null);
