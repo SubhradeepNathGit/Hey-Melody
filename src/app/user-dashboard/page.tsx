@@ -312,50 +312,144 @@ export default function UserDashboard() {
 
 
   async function removeSongFromPlaylist(playlistId: number, songId: number) {
-    await getSupabaseClient()
+    const supabase = getSupabaseClient();
+
+    // 1. Check if the song being removed is the one currently playing
+    const isPlayingDeleted = player?.currentMusic?.id === songId;
+
+    // 2. Delete the song
+    await supabase
       .from("playlist_songs")
       .delete()
       .match({ playlist_id: playlistId, song_id: songId });
-    await openPlaylist(playlistId);
+
+    // 3. Fetch updated list to play next song if needed
+    const { data } = await supabase
+      .from("playlist_songs")
+      .select("added_at, position, song:songs(*)")
+      .eq("playlist_id", playlistId)
+      .order("position", { ascending: true });
+
+    const updatedSongs = (data ?? []).map((r: any) => ({
+      added_at: r.added_at,
+      position: r.position,
+      song: Array.isArray(r.song) ? r.song[0] : r.song,
+    }));
+
+    setOpenPlaylistSongs(updatedSongs);
+
+    // 4. Update the playlist's cover_image_url in the database if it hasn't been set manually
+    const nextCover = updatedSongs.length
+      ? updatedSongs[0].song.cover_image_url || (updatedSongs[0].song as any).cover
+      : null;
+
+    // We only sync if the playlist doesn't have a permanent cover set
+    const p = playlists.find(pl => pl.id === playlistId);
+    if (!p?.cover_image_url) {
+      await supabase
+        .from("playlists")
+        .update({ cover_image_url: null }) // We force null if empty, or let it stay null if it was null
+        .eq("id", playlistId);
+      // Note: If we want it to dynamic-sync like albums, we'd update it to nextCover.
+      // But playlists usually have a fixed cover or none.
+      // The user said "apply the same thing", so I will update it to nextCover.
+      await supabase
+        .from("playlists")
+        .update({ cover_image_url: nextCover })
+        .eq("id", playlistId);
+    }
+
     queryClient.invalidateQueries({ queryKey: ["user-playlists", me?.id] });
+
+    // 5. If the deleted song was playing, start playing the new first song from updated list
+    if (isPlayingDeleted && updatedSongs.length > 0) {
+      player?.playNow(updatedSongs[0].song, updatedSongs.map(s => s.song));
+    }
   }
 
   async function unlikeSong(songId: number) {
     if (!me) return;
-    await getSupabaseClient().from("liked_songs").delete().match({ user_id: me.id, song_id: songId });
+    const supabase = getSupabaseClient();
+    const isPlayingDeleted = player?.currentMusic?.id === songId;
+
+    await supabase.from("liked_songs").delete().match({ user_id: me.id, song_id: songId });
     queryClient.invalidateQueries({ queryKey: ["user-liked-songs", me.id] });
     queryClient.invalidateQueries({ queryKey: ["user-liked-song-ids", me.id] });
 
+    let updatedLiked: PlaylistSongRow[] = [];
     setVirtualPlaylist(prev => {
       if (!prev) return null;
+      updatedLiked = prev.songs.filter(s => s.song.id !== (songId as unknown as number));
+      const nextCover = updatedLiked.length > 0
+        ? updatedLiked[0].song.cover_image_url || (updatedLiked[0].song as any).cover
+        : null;
+
       return {
         ...prev,
-        songs: prev.songs.filter(s => s.song.id !== (songId as unknown as number))
+        playlist: { ...prev.playlist, cover_image_url: nextCover },
+        songs: updatedLiked
       }
     });
+
+    if (isPlayingDeleted && updatedLiked.length > 0) {
+      player?.playNow(updatedLiked[0].song, updatedLiked.map(s => s.song));
+    }
+
     toast.success("Removed from Liked Songs");
   }
 
   async function removeSongFromAlbum(songId: number) {
     if (!virtualPlaylist || typeof virtualPlaylist.playlist.id !== 'string') return;
     const albumId = virtualPlaylist.playlist.id;
+    const supabase = getSupabaseClient();
+    const isPlayingDeleted = player?.currentMusic?.id === songId;
 
-    await getSupabaseClient()
+    // 1. Delete the song from album_songs
+    await supabase
       .from("album_songs")
       .delete()
       .match({ album_id: albumId, song_id: songId });
 
+    // 2. Fetch remaining songs for this album to find the next cover
+    const { data: remainingSongs } = await supabase
+      .from("album_songs")
+      .select("added_at, position, song:songs(*)")
+      .eq("album_id", albumId)
+      .order("position", { ascending: true });
+
+    const updatedAlbumSongs = (remainingSongs ?? []).map((r: any) => ({
+      added_at: r.added_at,
+      position: r.position,
+      song: Array.isArray(r.song) ? r.song[0] : r.song,
+    }));
+
+    // 3. Determine the new cover image
+    const nextCover = updatedAlbumSongs.length
+      ? updatedAlbumSongs[0].song.cover_image_url || (updatedAlbumSongs[0].song as any).cover
+      : null;
+
+    // 4. Update the album's cover_image_url in the database
+    await supabase
+      .from("albums")
+      .update({ cover_image_url: nextCover })
+      .eq("id", albumId);
+
+    // 5. Invalidate and update UI
     queryClient.invalidateQueries({ queryKey: ["user-albums", me?.id] });
     queryClient.invalidateQueries({ queryKey: ["user-albums-full", me?.id] });
 
-    // Update virtual playlist state to remove the song
     setVirtualPlaylist(prev => {
       if (!prev) return null;
       return {
         ...prev,
-        songs: prev.songs.filter(s => s.song.id !== (songId as unknown as number))
+        playlist: { ...prev.playlist, cover_image_url: nextCover },
+        songs: updatedAlbumSongs
       }
     });
+
+    if (isPlayingDeleted && updatedAlbumSongs.length > 0) {
+      player?.playNow(updatedAlbumSongs[0].song, updatedAlbumSongs.map(s => s.song));
+    }
 
     toast.success("Removed from album");
   }
@@ -487,13 +581,13 @@ export default function UserDashboard() {
         />
 
         {/* --- Playlists Section --- */}
-        <section id="playlists" className="scroll-mt-24">
+        <section id="playlists" className="scroll-mt-24 mb-10 lg:mb-16">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
-            <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent">Your Playlists</h2>
+            <h2 className="text-2xl sm:text-3xl mt-2 lg:mt-8 font-bold text-white">Your Playlists</h2>
             <button
               type="button"
               onClick={() => openAddToPlaylistModal({ id: 0, title: "Sample Song", artist: "Artist" } as Song)}
-              className="flex items-center justify-center gap-2 h-11 px-5 rounded-full hover:scale-105 bg-white/5 text-white font-bold transition-all active:scale-95 w-full sm:w-auto border border-white/10 hover:border-cyan-500/50"
+              className="flex mt-2 lg:mt-8 items-center justify-center gap-2 h-11 px-5 rounded-xl hover:scale-105 bg-white/5 text-white font-bold transition-all active:scale-95 w-full sm:w-auto border border-white/10 hover:border-cyan-500/50"
             >
               <Plus className="h-5 w-5 text-cyan-400" />
               <span>Create Playlist</span>
@@ -507,7 +601,7 @@ export default function UserDashboard() {
         </section>
 
         {/* --- Liked Songs Section --- */}
-        <section id="liked" className="scroll-mt-24">
+        <section id="liked" className="scroll-mt-24 mb-10 lg:mb-16">
           <h2 className="text-2xl sm:text-3xl font-bold mb-6 bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent flex items-center gap-3">
             <Heart className="w-8 h-8 text-cyan-500 fill-cyan-500/20 stroke-[2.5]" /> Liked Songs
           </h2>
@@ -516,7 +610,7 @@ export default function UserDashboard() {
           ) : (
             <div
               onClick={openLikedSongsModal}
-              className="group relative h-64 w-64 rounded-2xl overflow-hidden cursor-pointer bg-gradient-to-br from-cyan-900/20 to-zinc-900/20 border border-white/5 hover:border-cyan-500/50 transition-all shadow-xl shadow-black/40"
+              className="group relative h-50 w-42 lg:h-64 lg:w-60 rounded-2xl overflow-hidden cursor-pointer bg-gradient-to-br from-cyan-900/20 to-zinc-900/20 border border-white/5 hover:border-cyan-500/50 transition-all shadow-xl shadow-black/40"
             >
               {likedSongs[0]?.song?.cover_image_url || (likedSongs[0]?.song as any)?.cover ? (
                 <img src={likedSongs[0].song.cover_image_url || (likedSongs[0].song as any).cover} alt="Liked" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-40" />
@@ -563,7 +657,7 @@ export default function UserDashboard() {
           {albumList.length === 0 ? (
             <p className="text-zinc-500">No albums found in your library.</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
               {albumList.map((album) => (
                 <div
                   key={album.id}
@@ -574,8 +668,8 @@ export default function UserDashboard() {
                     {album.cover ? (
                       <img src={album.cover} alt={album.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-zinc-800">
-                        <Disc className="w-12 h-12 text-zinc-600" />
+                      <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-cyan-600/50 flex items-center justify-center">
+                        <Disc className="w-12 h-12 text-cyan-500/30" strokeWidth={3} />
                       </div>
                     )}
 

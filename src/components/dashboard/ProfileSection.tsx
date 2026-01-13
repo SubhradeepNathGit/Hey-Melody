@@ -52,11 +52,11 @@ export default function ProfileSection({ displayName, email, avatarUrl }: Profil
           </div>
 
           {/* Profile Info */}
-          <div className="flex-1 ml-0 sm:ml-3 lg:ml-5 text-center mt-3 lg:mt-8 sm:text-left">
+          <div className="flex-1 ml-0 sm:ml-3 lg:ml-3 text-center mt-2 lg:mt-5 sm:text-left">
             <p className="text-xs sm:text-sm font-medium text-zinc-400 uppercase tracking-wider mb-2">
               View Profile
             </p>
-            <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black mb-2 sm:mb-3 text-white"> Welcome, {displayName} </h1>
+            <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-extrabold mb-2 sm:mb-3 text-white"> Welcome, {displayName} </h1>
             {email && (
               <p className="text-xs sm:text-sm md:text-base text-cyan-400 mb-4">{email}</p>
             )}

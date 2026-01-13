@@ -4,8 +4,9 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { X, Trash2, CheckCircle2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import type { Song } from "../../../types/song";
+import { PlayerContext } from "../../../layouts/FrontendLayout";
 
 type Playlist = {
   id: number | string;
@@ -53,16 +54,44 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 
 export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemove }: PlaylistModalProps) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [playingSongId, setPlayingSongId] = useState<number | null>(null);
+  const ctx = useContext(PlayerContext);
+  const currentMusic = ctx?.currentMusic;
+  const playingSongId = currentMusic?.id ?? null;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const songRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Auto-play first song when modal opens
   useEffect(() => {
-    if (songs && songs.length > 0) {
+    if (songs && songs.length > 0 && !currentMusic) {
       const firstSong = songs[0].song;
       onPlay(firstSong);
-      setPlayingSongId(firstSong.id);
     }
-  }, [songs]);
+  }, [songs, currentMusic, onPlay]);
+
+  // Auto-scroll to currently playing song
+  useEffect(() => {
+    if (playingSongId && songRefs.current.has(playingSongId) && scrollContainerRef.current) {
+      const songElement = songRefs.current.get(playingSongId);
+      if (songElement) {
+        const container = scrollContainerRef.current;
+        const containerRect = container.getBoundingClientRect();
+        const songRect = songElement.getBoundingClientRect();
+
+        // Calculate if the song is out of view
+        const isAboveView = songRect.top < containerRect.top;
+        const isBelowView = songRect.bottom > containerRect.bottom;
+
+        if (isAboveView || isBelowView) {
+          // Smooth scroll to center the song in the container
+          const scrollTop = songElement.offsetTop - container.offsetTop - (container.clientHeight / 2) + (songElement.clientHeight / 2);
+          container.scrollTo({
+            top: scrollTop,
+            behavior: 'smooth'
+          });
+        }
+      }
+    }
+  }, [playingSongId]);
 
   const showToast = (message: string) => {
     const id = Date.now();
@@ -81,7 +110,6 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
 
   const handleSongClick = (song: Song) => {
     onPlay(song);
-    setPlayingSongId(song.id);
   };
 
   if (!playlist) return null;
@@ -100,7 +128,7 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
         {/* Backdrop */}
         <div className="absolute inset-0 bg-black/90 backdrop-blur-md" />
 
-        {/* Modal */}
+        {/* Modal - Fixed dimensions */}
         <motion.div
           initial={{ scale: 0.96, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -109,25 +137,33 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
             duration: 0.2,
             ease: [0.16, 1, 0.3, 1]
           }}
-          className="relative w-full max-h-[95vh] sm:max-h-[90vh] md:max-h-[85vh] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl rounded-t-3xl sm:rounded-2xl bg-gradient-to-b from-zinc-900/95 to-black/95 backdrop-blur-xl overflow-hidden shadow-2xl flex flex-col"
+          className="relative w-full h-[600px] sm:w-[700px] sm:h-[550px] lg:w-[890px] rounded-t-3xl sm:rounded-2xl bg-gradient-to-b from-zinc-900/95 to-black/95 backdrop-blur-xl overflow-hidden shadow-2xl flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header with Cover */}
-          <div className="relative h-40 xs:h-44 sm:h-48 md:h-56 lg:h-64 w-full overflow-hidden flex-shrink-0">
+          {/* Header with Cover - Fixed height */}
+          <div className="relative h-[280px] sm:h-[260px] lg:h-65 w-full overflow-hidden flex-shrink-0">
             {(() => {
-              // For Liked Songs (id: -1) or Albums (UUID string), show currently playing song's cover
-              const isVirtualPlaylist = playlist.id === -1 || typeof playlist.id === 'string';
+              const isVirtual = playlist.id === -1 || typeof playlist.id === 'string';
               const currentPlayingSong = songs?.find(s => s.song.id === playingSongId)?.song;
-              const coverUrl = isVirtualPlaylist && currentPlayingSong
-                ? (currentPlayingSong.cover_image_url || (currentPlayingSong as any).cover)
-                : (playlist.cover_image_url || (playlist as any).cover);
+              const firstSong = songs?.[0]?.song;
+
+              // Priority for Virtual (Albums/Liked): Preferred source is the active songs list
+              // Priority for regular playlists: Preferred source is the metadata cover
+              let coverUrl = (playlist.cover_image_url || (playlist as any).cover);
+
+              if (isVirtual || !coverUrl) {
+                coverUrl = (currentPlayingSong?.cover_image_url || (currentPlayingSong as any)?.cover) ||
+                  (firstSong?.cover_image_url || (firstSong as any)?.cover) ||
+                  coverUrl;
+              }
 
               return coverUrl ? (
                 <Image
+                  key={`cover-${playingSongId || firstSong?.id || 'default'}`}
                   src={coverUrl}
                   alt={playlist.name}
                   fill
-                  className="object-cover"
+                  className="object-cover object-top sm:object-center transition-all duration-500"
                   priority
                 />
               ) : (
@@ -145,7 +181,7 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
               <p className="text-[10px] sm:text-xs font-bold text-white/70 uppercase tracking-widest mb-1 ml-1 sm:mb-2">
                 Playlist
               </p>
-              <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-6xl font-bold mb-1 sm:mb-2 text-white drop-shadow-2xl line-clamp-2">
+              <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-bold mb-1 sm:mb-2 text-white drop-shadow-2xl line-clamp-2">
                 {playlist.name}
               </h2>
               {playlist.description && (
@@ -168,14 +204,10 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
             </button>
           </div>
 
-          {/* Songs List */}
+          {/* Songs List - Fixed height with scrolling */}
           <div
-            className="overflow-y-auto px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 custom-scrollbar"
-            style={{
-              maxHeight: songs && songs.length > 0
-                ? 'calc(95vh - 10rem)'
-                : 'auto',
-            }}
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 pb-32 sm:pb-4 custom-scrollbar"
           >
             {!songs && (
               <div className="flex flex-col items-center justify-center py-12 sm:py-16">
@@ -197,10 +229,17 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
             )}
 
             {songs && songs.length > 0 && (
-              <div className="space-y-0.5 pt-3 sm:pt-4">
+              <div className="space-y-0.5 py-3 sm:py-4">
                 {songs.map(({ song }, index) => (
                   <motion.div
                     key={`song-${song.id}-${index}`}
+                    ref={(el) => {
+                      if (el) {
+                        songRefs.current.set(song.id, el);
+                      } else {
+                        songRefs.current.delete(song.id);
+                      }
+                    }}
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{

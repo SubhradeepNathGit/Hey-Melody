@@ -38,8 +38,16 @@ export default function MusicPlayer() {
 
   const [volume, setVolume] = useState(50);
   const [previousVolume, setPreviousVolume] = useState(50);
+  const [mounted, setMounted] = useState(false);
+
+  // Marquee refs and state
+  const containerRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const [shouldMarquee, setShouldMarquee] = useState(false);
+  const [marqueeDuration, setMarqueeDuration] = useState("10s");
 
   useEffect(() => {
+    setMounted(true);
     if (typeof window === "undefined") return;
     const v = Number(localStorage.getItem("bh_volume"));
     const initialVol = Number.isFinite(v) ? Math.min(Math.max(v, 0), 100) : 50;
@@ -111,6 +119,43 @@ export default function MusicPlayer() {
       setDuration(0);
     }
   }, [currentTrackId, audioSrc]);
+
+  // Check if title needs marquee
+  useEffect(() => {
+    const checkMarquee = () => {
+      if (containerRef.current && titleRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const textWidth = titleRef.current.scrollWidth;
+
+        if (textWidth > containerWidth) {
+          setShouldMarquee(true);
+          const duration = Math.max(5, textWidth / 40);
+          setMarqueeDuration(`${duration}s`);
+        } else {
+          setShouldMarquee(false);
+        }
+      }
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      checkMarquee();
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    // Immediate check
+    checkMarquee();
+
+    // Fallback for PC load speed / font settling
+    const timer = setTimeout(checkMarquee, 100);
+
+    return () => {
+      resizeObserver.disconnect();
+      clearTimeout(timer);
+    };
+  }, [title, currentTrackId]);
 
   const togglePlay = useCallback(() => {
     const a = audioRef.current;
@@ -209,6 +254,8 @@ export default function MusicPlayer() {
   const VolumeIcon =
     volume === 0 ? IoMdVolumeOff : volume < 50 ? IoMdVolumeLow : IoMdVolumeHigh;
 
+  if (!mounted) return null;
+
   return (
     <>
       <Queue />
@@ -244,16 +291,22 @@ export default function MusicPlayer() {
                 />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center">
-                <div className="overflow-hidden relative h-4 sm:h-6">
-                  <div className={`flex whitespace-nowrap ${title.length > 8 ? "animate-marquee" : ""}`}>
-                    <span className="font-semibold text-[11px] sm:text-base text-white pr-5">
-                      {title || "\u00A0"}
-                    </span>
-                    {title.length > 8 && (
-                      <span className="font-semibold text-[11px] sm:text-base text-white pr-5">
-                        {title}
+                <div ref={containerRef} className="overflow-hidden relative h-4 sm:h-6">
+                  <div
+                    key={currentTrackId}
+                    className={`flex whitespace-nowrap w-fit ${shouldMarquee ? "animate-marquee" : ""}`}
+                    style={{ animationDuration: marqueeDuration }}
+                  >
+                    <div ref={titleRef} className="flex whitespace-nowrap">
+                      <span className="font-semibold text-[11px] sm:text-base text-white pr-10">
+                        {title || "\u00A0"}
                       </span>
-                    )}
+                      {shouldMarquee && (
+                        <span className="font-semibold text-[11px] sm:text-base text-white pr-10">
+                          {title}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <p className="text-zinc-500 text-[9px] sm:text-sm truncate">
@@ -378,8 +431,8 @@ export default function MusicPlayer() {
         }
         
         .animate-marquee {
-          animation: marquee 8s linear infinite;
-          -webkit-animation: marquee 8s linear infinite;
+          animation: marquee linear infinite;
+          -webkit-animation: marquee linear infinite;
           will-change: transform;
         }
       `}</style>
