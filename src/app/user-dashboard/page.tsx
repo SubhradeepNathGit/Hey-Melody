@@ -73,6 +73,13 @@ export default function UserDashboard() {
     };
   }, [authUser]);
 
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !authUser) {
+      window.location.href = "/login";
+    }
+  }, [authUser, authLoading]);
+
   const [busy, setBusy] = useState(false);
   const [openPlaylistId, setOpenPlaylistId] = useState<number | null>(null);
   const [openPlaylistSongs, setOpenPlaylistSongs] = useState<PlaylistSongRow[] | null>(null);

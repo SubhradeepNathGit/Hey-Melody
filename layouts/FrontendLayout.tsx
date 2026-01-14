@@ -3,6 +3,8 @@
 import React, { createContext, useMemo, useState, useCallback } from "react";
 import type { Song } from "../types/song";            // use one canonical import path
 import MusicPlayer from "@/components/MusicPlayer";   // global player only
+import { useEffect } from "react";
+import getSupabaseClient from "../api/SupabaseClient";
 
 export type PlayerContextType = {
   currentMusic: Song | null;
@@ -20,6 +22,22 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
   const [currentMusic, setCurrentMusic] = useState<Song | null>(null);
   const [queue, setQueue] = useState<Song[]>([]);
   const [isQueueModalOpen, setQueueModalOpen] = useState(false);
+
+  // Sync session to cookie for middleware
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        // Set a cookie that the middleware can read
+        document.cookie = `sb-acgbmvotllgzbwonvhnb-auth-token=${session.access_token}; path=/; max-age=${3600 * 24 * 7}; SameSite=Lax`;
+      } else {
+        // Clear the cookie
+        document.cookie = `sb-acgbmvotllgzbwonvhnb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const indexInQueue = useMemo(() => {
     return currentMusic ? queue.findIndex((s) => s.id === currentMusic.id) : -1;

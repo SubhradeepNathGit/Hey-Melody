@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Library, Music, Heart } from "lucide-react";
 import CustomDropdown from "./CustomDropdown";
+import toast from "react-hot-toast";
 
 type Filter = { type: "artist"; value: string } | { type: "album"; value: string } | null;
 
@@ -14,6 +15,7 @@ type LeftSidebarProps = {
   activeFilter: Filter;
   setActiveFilter: (filter: Filter) => void;
   setCurrentPage: (page: number) => void;
+  authUser: any;
 };
 
 const SORT_OPTIONS = [
@@ -31,6 +33,7 @@ export default function LeftSidebar({
   activeFilter,
   setActiveFilter,
   setCurrentPage,
+  authUser,
 }: LeftSidebarProps) {
   return (
     <>
@@ -77,27 +80,45 @@ export default function LeftSidebar({
 
             <ul className="space-y-1">
               <li>
-                <Link
-                  href="/user-dashboard"
-                  className="flex items-center gap-3 text-sm text-zinc-300 rounded-xl px-3 py-2.5 hover:bg-white/10 transition-all"
+                <div
+                  onClick={(e) => {
+                    if (!authUser) {
+                      e.preventDefault();
+                      toast.error("Sign in to access");
+                    }
+                  }}
                 >
-                  <div className="h-9 w-9 rounded-lg bg-white/10 grid place-items-center">
-                    <Music className="w-5 h-5 text-zinc-300" />
-                  </div>
-                  <span className="font-medium">My Playlists</span>
-                </Link>
+                  <Link
+                    href={authUser ? "/user-dashboard" : "#"}
+                    className="flex items-center gap-3 text-sm text-zinc-300 rounded-xl px-3 py-2.5 hover:bg-white/10 transition-all"
+                  >
+                    <div className="h-9 w-9 rounded-lg bg-white/10 grid place-items-center">
+                      <Music className="w-5 h-5 text-zinc-300" />
+                    </div>
+                    <span className="font-medium">My Playlists</span>
+                  </Link>
+                </div>
               </li>
 
               <li>
-                <Link
-                  href="/user-dashboard#liked"
-                  className="flex items-center gap-3 text-sm text-zinc-300 rounded-xl px-3 py-2.5 hover:bg-white/10 transition-all"
+                <div
+                  onClick={(e) => {
+                    if (!authUser) {
+                      e.preventDefault();
+                      toast.error("Sign in to access");
+                    }
+                  }}
                 >
-                  <div className="h-9 w-9 rounded-lg bg-cyan-500/20 grid place-items-center">
-                    <Heart className="w-5 h-5 text-cyan-400" />
-                  </div>
-                  <span className="font-medium">Liked Songs</span>
-                </Link>
+                  <Link
+                    href={authUser ? "/user-dashboard#liked" : "#"}
+                    className="flex items-center gap-3 text-sm text-zinc-300 rounded-xl px-3 py-2.5 hover:bg-white/10 transition-all"
+                  >
+                    <div className="h-9 w-9 rounded-lg bg-cyan-500/20 grid place-items-center">
+                      <Heart className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <span className="font-medium">Liked Songs</span>
+                  </Link>
+                </div>
               </li>
             </ul>
           </div>

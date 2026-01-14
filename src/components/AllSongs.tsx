@@ -446,6 +446,7 @@ export default function AllSongs() {
             activeFilter={activeFilter}
             setActiveFilter={setActiveFilter}
             setCurrentPage={setCurrentPage}
+            authUser={authUser ?? null}
           />
 
           <main className="min-w-0">
