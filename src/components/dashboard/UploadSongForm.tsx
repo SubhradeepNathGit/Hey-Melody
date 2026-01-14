@@ -61,7 +61,7 @@ export default function UploadSongForm({ onSubmit, busy }: UploadSongFormProps) 
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center px-1 sm:px-2 lg:px-2 py-8 sm:py-12">
+    <div className="w-full min-h-screen flex items-center justify-center px-1 sm:px-1 lg:px-2 py-8 sm:py-12">
       <div className="w-full max-w-7xl">
       {/* Beta Badge & Header */}
       <div className="text-center mb-6 sm:mb-8 lg:mb-10 space-y-3 sm:space-y-4">
@@ -158,7 +158,7 @@ export default function UploadSongForm({ onSubmit, busy }: UploadSongFormProps) 
                       ? "border-cyan-400 bg-cyan-500/10 scale-[1.02]"
                       : audioFile
                       ? "border-cyan-500/50 bg-cyan-500/5"
-                      : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
+                      : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 "
                   }`}
                 >
                   <input
