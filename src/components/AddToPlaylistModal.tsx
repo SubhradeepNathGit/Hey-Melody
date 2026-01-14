@@ -2,12 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
-
-type Song = {
-  id: number;
-  title: string;
-  artist: string;
-};
+import type { Song } from "../../types/song";
 
 type Playlist = {
   id: number;
