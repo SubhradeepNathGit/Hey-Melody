@@ -57,7 +57,7 @@ export default function MusicPlayer() {
 
   const currentTrackId = currentMusic?.id ?? "none";
   const audioSrc: string | undefined = currentMusic?.audio_url || undefined;
-  const cover = currentMusic?.cover_image_url || (currentMusic as any)?.cover || "/favicon.ico";
+  const cover = currentMusic?.cover_image_url || (currentMusic as any)?.cover || "/favicon.png";
   const title = currentMusic?.title ?? "";
   const artist = currentMusic?.artist ?? "";
 
@@ -283,13 +283,14 @@ export default function MusicPlayer() {
             <div className="flex items-center gap-2 sm:gap-3 mr-6 ml-4 min-w-0">
               <div className="relative shrink-0 overflow-hidden rounded-md shadow-lg h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 ring-1 ring-white/10">
                 <Image
-                  src={cover || "/favicon.ico"}
+                  src={cover || "/favicon.png"}
                   alt={title || "Now playing"}
                   fill
                   className="object-cover"
                   priority
                 />
               </div>
+
               <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <div ref={containerRef} className="overflow-hidden relative h-4 sm:h-6">
                   <div
