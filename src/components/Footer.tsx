@@ -5,7 +5,7 @@ import { Facebook, Twitter, Instagram, Youtube, Mail, Heart } from "lucide-react
 
 export default function Footer() {
     return (
-          <footer className="mt-20 mb-25 bg-black/50 backdrop-blur-xl">
+        <footer className="mt-6 mb-24 sm:mt-10 sm:mb-10 lg:mb-40 bg-black/50 backdrop-blur-xl">
           <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-0 text-center">
             <p className="text-sm text-zinc-500 mb-2">
               © {new Date().getFullYear()} Hey Melody -All Rights Reserved

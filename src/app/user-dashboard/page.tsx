@@ -756,7 +756,7 @@ export default function UserDashboard() {
 
         {/* --- Upload Form --- */}
         <section id="upload" className="pt-8">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-white">Upload Music</h2>
+         
           <UploadSongForm onSubmit={handleAddSong} busy={busy} />
         </section>
 
