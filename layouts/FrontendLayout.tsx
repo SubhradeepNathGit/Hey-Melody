@@ -26,14 +26,22 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
   }, [currentMusic, queue]);
 
   const playNext = useCallback(() => {
+    if (queue.length === 0) return;
     if (indexInQueue >= 0 && indexInQueue < queue.length - 1) {
       setCurrentMusic(queue[indexInQueue + 1]);
+    } else {
+      // Loop back to start
+      setCurrentMusic(queue[0]);
     }
   }, [queue, indexInQueue]);
 
   const playPrev = useCallback(() => {
+    if (queue.length === 0) return;
     if (indexInQueue > 0) {
       setCurrentMusic(queue[indexInQueue - 1]);
+    } else {
+      // Loop back to end
+      setCurrentMusic(queue[queue.length - 1]);
     }
   }, [queue, indexInQueue]);
 

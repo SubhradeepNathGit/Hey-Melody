@@ -6,7 +6,7 @@ import { AlertTriangle, Lock } from "lucide-react";
 import getSupabaseClient from "../../api/SupabaseClient";
 import type { Song } from "../../types/song";
 import { PlayerContext } from "../../layouts/FrontendLayout";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import Header from "./Header";
 import LeftSidebar from "./LeftSidebar";
 import SongCard from "./SongCard";
@@ -20,7 +20,7 @@ function uniq<T>(arr: T[]): T[] {
 }
 
 type Filter = { type: "artist"; value: string } | { type: "album"; value: string } | null;
-type Playlist = { id: number; name: string; description?: string | null };
+type Playlist = { id: number; name: string; description?: string | null; cover_image_url?: string | null };
 type LikedRow = { song_id: number };
 type Album = { id: string; user_id: string; name: string; description?: string | null; cover_image_url?: string | null; artist?: string | null; };
 
@@ -44,6 +44,24 @@ export default function AllSongs() {
     mq.addEventListener?.("change", handler);
     return () => mq.removeEventListener?.("change", handler);
   }, []);
+
+  // --- History Management for Modals ---
+  useEffect(() => {
+    const handlePopState = () => {
+      if (pickerForSong || pickerForAlbumSong) {
+        setPickerForSong(null);
+        setPickerForAlbumSong(null);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [pickerForSong, pickerForAlbumSong]);
+
+  useEffect(() => {
+    if (pickerForSong || pickerForAlbumSong) {
+      window.history.pushState({ modal: true }, "");
+    }
+  }, [pickerForSong, pickerForAlbumSong]);
 
   const { data: authUser } = useQuery({
     queryKey: ["authUser"],
@@ -145,13 +163,27 @@ export default function AllSongs() {
   });
 
   const addToPlaylist = useMutation({
-    mutationFn: async ({ playlist_id, song_id }: { playlist_id: number; song_id: number }) => {
+    mutationFn: async ({ playlist_id, song, forceCoverUpdate }: { playlist_id: number; song: Song; forceCoverUpdate?: boolean }) => {
       const supabase = getSupabaseClient();
-      const { error: mErr } = await supabase.from("playlist_songs").insert({ playlist_id, song_id });
+
+      // 1. Add song
+      const { error: mErr } = await supabase.from("playlist_songs").insert({ playlist_id, song_id: song.id });
       if (mErr) {
         const lower = String(mErr.message).toLowerCase();
         if (lower.includes("duplicate")) throw new Error("This song is already in that playlist.");
         throw mErr;
+      }
+
+      // 2. Sync cover if requested or if playlist has no cover in current state
+      const playlist = playlists?.find(p => p.id === playlist_id);
+      const songCover = song.cover_image_url || (song as any).cover;
+      const shouldUpdateCover = forceCoverUpdate || (playlist && !playlist.cover_image_url);
+
+      if (shouldUpdateCover && songCover) {
+        await supabase
+          .from("playlists")
+          .update({ cover_image_url: songCover })
+          .eq("id", playlist_id);
       }
     },
     onSuccess: () => {
@@ -319,15 +351,16 @@ export default function AllSongs() {
   };
 
   const handleCreateAndAdd = async () => {
-    const name = newPlaylistName.trim();
-    if (!name) {
+    const rawName = newPlaylistName.trim();
+    if (!rawName) {
       toast.error("Give your playlist a name");
       return;
     }
+    const name = rawName.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
     try {
       const p = await createPlaylist.mutateAsync(name);
       if (pickerForSong) {
-        await addToPlaylist.mutateAsync({ playlist_id: p.id, song_id: pickerForSong.id as unknown as number });
+        await addToPlaylist.mutateAsync({ playlist_id: p.id, song: pickerForSong, forceCoverUpdate: true });
       }
       setNewPlaylistName("");
     } catch { }
@@ -372,20 +405,6 @@ export default function AllSongs() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-black text-white">
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          style: {
-            background: "rgba(24, 24, 27, 0.95)",
-            color: "#fff",
-            border: "1px solid rgba(39, 39, 42, 0.5)",
-            backdropFilter: "blur(12px)",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
-          },
-          duration: 3000,
-        }}
-      />
-
       <Header
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -511,7 +530,7 @@ export default function AllSongs() {
         playlistsLoading={playlistsLoading}
         newPlaylistName={newPlaylistName}
         setNewPlaylistName={setNewPlaylistName}
-        onAddToPlaylist={(playlistId, songId) => addToPlaylist.mutate({ playlist_id: playlistId, song_id: songId })}
+        onAddToPlaylist={(playlistId, _songId) => addToPlaylist.mutate({ playlist_id: playlistId, song: pickerForSong! })}
         handleCreateAndAdd={handleCreateAndAdd}
         createPlaylistPending={createPlaylist.isPending}
         addToPlaylistPending={addToPlaylist.isPending}

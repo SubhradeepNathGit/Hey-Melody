@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { toast } from "react-hot-toast";
 
 type CreateAlbumModalProps = {
     isOpen: boolean;
@@ -32,15 +33,16 @@ export default function CreateAlbumModal({
     if (!isOpen) return null;
 
     const handleCreate = async () => {
-        const trimmed = albumName.trim();
-        if (!trimmed) return;
+        const rawName = albumName.trim();
+        if (!rawName) return;
+        const trimmed = rawName.toLowerCase().replace(/\b\w/g, (s) => s.toUpperCase());
 
         // Check for duplicate
         const exists = existingAlbums.some(
             (a) => a.toLowerCase() === trimmed.toLowerCase()
         );
         if (exists) {
-            alert("An album with this name already exists!");
+            toast.error("An album with this name already exists!");
             return;
         }
 

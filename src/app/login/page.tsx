@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import loginUser from "../../../api/auth/loginUser";
 import getSupabaseClient from "../../../api/SupabaseClient";
 export const dynamic = "force-dynamic";
@@ -93,17 +93,6 @@ export default function Page() {
 
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden flex items-center justify-center bg-black">
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          style: {
-            background: '#18181b',
-            color: '#fff',
-            border: '1px solid #27272a',
-          },
-        }}
-      />
-
       {/* Grid pattern overlay */}
       <div
         aria-hidden="true"
@@ -123,26 +112,26 @@ export default function Page() {
                      px-8 py-7"
         >
           <div className="relative z-10">
-          {/* Header */}
-<header className="mb-5 text-center">
-  <div className="inline-flex items-center justify-center mb-2.5">
-    <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-cyan-400 via-cyan-500 to-cyan-600 grid place-items-center shadow-lg shadow-cyan-500/30">
-      <Logo/>
-    </div>
-  </div>
+            {/* Header */}
+            <header className="mb-5 text-center">
+              <div className="inline-flex items-center justify-center mb-2.5">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-cyan-400 via-cyan-500 to-cyan-600 grid place-items-center shadow-lg shadow-cyan-500/30">
+                  <Logo />
+                </div>
+              </div>
 
- <h1 className="text-3xl font-extrabold mb-1.5">
-  <span className="text-white">Hey </span>
-  <span className="bg-gradient-to-r from-cyan-300 to-cyan-500 bg-clip-text text-transparent">
-    Melody
-  </span>
-</h1>
+              <h1 className="text-3xl font-extrabold mb-1.5">
+                <span className="text-white">Hey </span>
+                <span className="bg-gradient-to-r from-cyan-300 to-cyan-500 bg-clip-text text-transparent">
+                  Melody
+                </span>
+              </h1>
 
 
-  <p className="text-sm text-zinc-400 font-medium">
-    Create account to start streaming your vibe 🎧
-  </p>
-</header>
+              <p className="text-sm text-zinc-400 font-medium">
+                Create account to start streaming your vibe 🎧
+              </p>
+            </header>
 
 
             {/* Form */}

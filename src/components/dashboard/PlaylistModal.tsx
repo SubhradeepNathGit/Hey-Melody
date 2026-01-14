@@ -60,6 +60,17 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const songRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
+  useEffect(() => {
+    if (playlist) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [playlist]);
+
   // Auto-play first song when modal opens
   useEffect(() => {
     if (songs && songs.length > 0 && !currentMusic) {

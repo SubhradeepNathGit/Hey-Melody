@@ -40,7 +40,7 @@ export default function LeftSidebar({
       <div className="lg:hidden mb-4 sm:mb-6">
         <div className="bg-zinc-900/80 border border-white/10 rounded-2xl p-4 shadow-lg">
           <CustomDropdown
-            label="Sort songs"
+            label="Filter songs by"
             options={SORT_OPTIONS}
             value={sortOption}
             onChange={(val) => setSortOption(val as any)}
@@ -61,9 +61,11 @@ export default function LeftSidebar({
             </h3>
 
             <CustomDropdown
+              label="Filter songs by"
               options={SORT_OPTIONS}
               value={sortOption}
               onChange={(val) => setSortOption(val as any)}
+              className="mt-3"
             />
           </div>
 

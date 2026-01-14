@@ -3,6 +3,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useState } from "react";
 
 type ProfileSectionProps = {
   displayName: string;
@@ -11,6 +12,8 @@ type ProfileSectionProps = {
 };
 
 export default function ProfileSection({ displayName, email, avatarUrl }: ProfileSectionProps) {
+  const [isImageLoading, setIsImageLoading] = useState(true);
+
   const getInitial = () => {
     return displayName.charAt(0).toUpperCase();
   };
@@ -34,13 +37,24 @@ export default function ProfileSection({ displayName, email, avatarUrl }: Profil
             <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-cyan-800 rounded-full opacity-35 group-hover:opacity-100 blur transition-all duration-300" />
             <div className="relative h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 lg:h-40 lg:w-40 rounded-full overflow-hidden border-4 border-cyan-400">
               {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt={displayName}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
+                <>
+                  {isImageLoading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm">
+                      <div className="relative h-8 w-8 sm:h-10 sm:w-10">
+                        <div className="absolute inset-0 rounded-full border-4 border-white/10 border-t animate-spin" />
+                     
+                      </div>
+                    </div>
+                  )}
+                  <Image
+                    src={avatarUrl}
+                    alt={displayName}
+                    fill
+                    className={`object-cover transition-opacity duration-300 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
+                    onLoadingComplete={() => setIsImageLoading(false)}
+                    unoptimized
+                  />
+                </>
               ) : (
                 <div className="h-full w-full bg-gradient-to-br from-cyan-500/10 to-cyan-800 flex items-center justify-center">
                   <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white/90">

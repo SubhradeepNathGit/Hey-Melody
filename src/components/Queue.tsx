@@ -26,6 +26,17 @@ export default function Queue() {
     return () => mq.removeEventListener?.("change", handler);
   }, []);
 
+  useEffect(() => {
+    if (isQueueModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isQueueModalOpen]);
+
   const startPlayingSong = (song: Song) => {
     playNow(song, queue);
   };

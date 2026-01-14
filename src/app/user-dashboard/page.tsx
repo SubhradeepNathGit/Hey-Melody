@@ -177,6 +177,30 @@ export default function UserDashboard() {
 
   const player = useContext(PlayerContext);
 
+  // --- History Management for Modals ---
+  // Close modals on browser "Back" button
+  useEffect(() => {
+    const handlePopState = () => {
+      // If any modal is open, close it and prevent navigation
+      if (openPlaylistId || virtualPlaylist || addToPlaylistModal.isOpen || deleteAlbumDialog) {
+        setOpenPlaylistId(null);
+        setVirtualPlaylist(null);
+        setAddToPlaylistModal({ isOpen: false, song: null });
+        setDeleteAlbumDialog(null);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [openPlaylistId, virtualPlaylist, addToPlaylistModal.isOpen, deleteAlbumDialog]);
+
+  // Push state when any modal opens
+  useEffect(() => {
+    if (openPlaylistId || virtualPlaylist || addToPlaylistModal.isOpen || deleteAlbumDialog) {
+      window.history.pushState({ modal: true }, "");
+    }
+  }, [openPlaylistId, virtualPlaylist, addToPlaylistModal.isOpen, deleteAlbumDialog]);
+
   const displayName = useMemo(() => {
     if (!me) return "You";
     return me.display_name?.trim() || me.email?.split("@")[0] || "You";
@@ -338,26 +362,15 @@ export default function UserDashboard() {
 
     setOpenPlaylistSongs(updatedSongs);
 
-    // 4. Update the playlist's cover_image_url in the database if it hasn't been set manually
+    // 4. Update the playlist's cover_image_url in the database to match the new first song (sync like albums/liked songs)
     const nextCover = updatedSongs.length
       ? updatedSongs[0].song.cover_image_url || (updatedSongs[0].song as any).cover
       : null;
 
-    // We only sync if the playlist doesn't have a permanent cover set
-    const p = playlists.find(pl => pl.id === playlistId);
-    if (!p?.cover_image_url) {
-      await supabase
-        .from("playlists")
-        .update({ cover_image_url: null }) // We force null if empty, or let it stay null if it was null
-        .eq("id", playlistId);
-      // Note: If we want it to dynamic-sync like albums, we'd update it to nextCover.
-      // But playlists usually have a fixed cover or none.
-      // The user said "apply the same thing", so I will update it to nextCover.
-      await supabase
-        .from("playlists")
-        .update({ cover_image_url: nextCover })
-        .eq("id", playlistId);
-    }
+    await supabase
+      .from("playlists")
+      .update({ cover_image_url: nextCover })
+      .eq("id", playlistId);
 
     queryClient.invalidateQueries({ queryKey: ["user-playlists", me?.id] });
 
@@ -516,6 +529,8 @@ export default function UserDashboard() {
 
   async function handleAddToPlaylist(playlistId: number) {
     if (!addToPlaylistModal.song) return;
+    const p = playlists.find(pl => pl.id === playlistId);
+    const songCover = addToPlaylistModal.song.cover_image_url || (addToPlaylistModal.song as any).cover;
 
     const { error } = await getSupabaseClient().from("playlist_songs").insert({
       playlist_id: playlistId,
@@ -525,6 +540,14 @@ export default function UserDashboard() {
     if (error) {
       toast.error("Could not add to playlist");
     } else {
+      // Sync cover if not set
+      if (p && !p.cover_image_url && songCover) {
+        await getSupabaseClient()
+          .from("playlists")
+          .update({ cover_image_url: songCover })
+          .eq("id", playlistId);
+      }
+
       toast.success("Added to playlist");
       queryClient.invalidateQueries({ queryKey: ["user-playlists", me?.id] });
       closeAddToPlaylistModal();
@@ -533,12 +556,23 @@ export default function UserDashboard() {
 
   async function handleCreateAndAddToPlaylist(name: string) {
     if (!addToPlaylistModal.song) return;
+    const songCover = addToPlaylistModal.song.cover_image_url || (addToPlaylistModal.song as any).cover;
+
     const playlistId = await handleCreatePlaylist(name);
     if (playlistId) {
+      // Add song
       await getSupabaseClient().from("playlist_songs").insert({
         playlist_id: playlistId,
         song_id: addToPlaylistModal.song.id,
       });
+
+      // Set cover
+      if (songCover) {
+        await getSupabaseClient()
+          .from("playlists")
+          .update({ cover_image_url: songCover })
+          .eq("id", playlistId);
+      }
     }
     closeAddToPlaylistModal();
   }

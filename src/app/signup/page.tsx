@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import getSupabaseClient from "../../../api/SupabaseClient";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { Session } from "@supabase/supabase-js";
 import Logo from "../../components/Logo";
 
@@ -106,17 +106,6 @@ export default function Page() {
 
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden flex items-center justify-center bg-black">
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          style: {
-            background: '#18181b',
-            color: '#fff',
-            border: '1px solid #27272a',
-          },
-        }}
-      />
-
       {/* Grid pattern overlay */}
       <div
         aria-hidden="true"

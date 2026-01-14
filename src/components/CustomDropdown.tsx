@@ -51,7 +51,7 @@ export default function CustomDropdown({
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
-          flex items-center justify-between
+          flex items-center mb-3 justify-between
           w-full h-10 sm:h-11 rounded-xl 
           bg-black/40 border border-white/10 px-4
           text-sm text-zinc-200 
