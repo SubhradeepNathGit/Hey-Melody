@@ -129,7 +129,7 @@ export default function PlaylistGrid({
             <div
               key={playlist.id}
               onClick={() => onOpen(playlist.id)}
-              className="group rounded-2xl bg-zinc-900/80 p-3 sm:p-4 cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              className="group rounded-2xl bg-zinc-950 p-3 sm:p-4 cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
             >
               <div className="relative aspect-square rounded-xl overflow-hidden mb-3 sm:mb-4">
                 {(playlist.cover_image_url || (playlist as any).cover) ? (

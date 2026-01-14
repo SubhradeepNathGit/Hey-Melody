@@ -84,7 +84,7 @@ export default function UploadSongForm({ onSubmit, busy }: UploadSongFormProps) 
         {/* Gradient Border Effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-cyan-400/10 to-cyan-600/20 blur-lg" />
         
-        <div className="relative bg-gradient-to-br from-zinc-900/60 via-zing-800 to-black backdrop-blur-2xl border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-10 space-y-6 sm:space-y-8">
+        <div className="relative bg-gradient-to-br from-zinc-950/60 to-black backdrop-blur-2xl border border-white/10 rounded-2xl sm:rounded-2xl p-4 sm:p-6 lg:p-10 space-y-6 sm:space-y-8">
           
           {/* Icon & Info Section */}
           <div className="flex sm:flex-row items-start mt-1 sm:items-center gap-4 sm:gap-6">
