@@ -65,12 +65,12 @@ export default function UploadSongForm({ onSubmit, busy }: UploadSongFormProps) 
       <div className="w-full max-w-7xl">
       {/* Beta Badge & Header */}
       <div className="text-center mb-6 sm:mb-8 lg:mb-10 space-y-3 sm:space-y-4">
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-gradient-to-r from-cyan-500/20 via-cyan-400/20 to-cyan-600/20 border border-cyan-400/30 backdrop-blur-sm">
+        <div className="inline-flex items-center gap-2 px-3 sm:px-3 py-1.5 sm:py-2 rounded-full bg-gradient-to-r from-cyan-500/20 via-cyan-400/20 to-cyan-600/20 border border-cyan-400/30 backdrop-blur-sm">
           < KeyRound  className="h-3 w-3 sm:h-4 sm:w-4 text-cyan-400" />
           <span className="text-xs sm:text-sm font-semibold text-cyan-300 tracking-wide">BETA ACCESS</span>
         </div>
         
-        <h1 className="text-3xl sm:text-4xl lg:text-4xl font-bold text-white tracking-tight px-4">
+        <h1 className="text-2xl sm:text-4xl lg:text-4xl font-bold text-white tracking-tight px-4">
           Upload Your Music
         </h1>
         
@@ -90,7 +90,7 @@ export default function UploadSongForm({ onSubmit, busy }: UploadSongFormProps) 
           <div className="flex sm:flex-row items-start mt-1 sm:items-center gap-4 sm:gap-6">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl sm:rounded-2xl opacity-50" />
-              <div className="relative h-12 w-12 sm:h-12 sm:w-12 lg:h-20 lg:w-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 grid place-items-center">
+              <div className="relative h-12 w-12 sm:h-12 sm:w-12 lg:h-16 lg:w-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 grid place-items-center">
                 <Music2 className="h-7 w-7 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-white" strokeWidth={3} />
               </div>
             </div>

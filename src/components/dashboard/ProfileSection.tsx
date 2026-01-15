@@ -27,7 +27,7 @@ export default function ProfileSection({ displayName, email, avatarUrl }: Profil
       {/* Gradient Background */}
       <div className="absolute" />
 
-      <div className="relative mt-5 mb-10">
+      <div className="relative mb-0 sm:mb-0 mt-1 sm:mt-2 lg:mt-5">
         {/* Pattern Overlay */}
         <div className="absolute inset-0 opacity-[0.03] [background-image:linear-gradient(to_right,rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,.5)_1px,transparent_1px)] [background-size:32px_32px]" />
 
@@ -66,13 +66,13 @@ export default function ProfileSection({ displayName, email, avatarUrl }: Profil
           </div>
 
           {/* Profile Info */}
-          <div className="flex-1 ml-0 sm:ml-3 lg:ml-3 text-center mt-2 lg:mt-5 sm:text-left">
+          <div className="flex-1 ml-0 sm:ml-3 lg:ml-3 text-center lg:mt-5 sm:text-left">
             <p className="text-xs sm:text-sm font-medium text-zinc-400 uppercase tracking-wider mb-2">
               View Profile
             </p>
-            <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-extrabold mb-2 sm:mb-3 text-white"> Welcome, {displayName} </h1>
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-3 text-white"> Welcome, {displayName} </h1>
             {email && (
-              <p className="text-xs sm:text-sm md:text-base text-cyan-400 mb-4">{email}</p>
+              <p className="text-sm sm:text-sm md:text-base text-cyan-400 mb-4">{email}</p>
             )}
 
           </div>
