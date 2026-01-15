@@ -260,7 +260,7 @@ export default function MusicPlayer() {
     <>
       <Queue />
       <div
-       className={`fixed bottom-0 left-0 w-full z-50
+        className={`fixed bottom-0 left-0 w-full z-50
   pb-[calc(env(safe-area-inset-bottom)+0.1rem)]
   bg-black/70 backdrop-blur-xl
   transition-all duration-300
@@ -338,7 +338,7 @@ export default function MusicPlayer() {
 
               <button
                 onClick={playNext}
-                className="text-lg sm:text-2xl text-zinc-400 hover:text-white transition-all hover:scale-110 active:scale-95"
+                className="text-lg sm:text-3xl text-zinc-400 hover:text-white transition-all hover:scale-110 active:scale-95"
                 title="Next"
               >
                 <IoMdSkipForward />

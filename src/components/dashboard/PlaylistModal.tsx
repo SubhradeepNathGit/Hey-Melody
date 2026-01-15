@@ -154,10 +154,20 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
           {/* Header with Cover - Fixed height */}
           <div className="relative h-[280px] sm:h-[260px] lg:h-65 w-full overflow-hidden flex-shrink-0">
             {(() => {
-              // 1. Prioritize explicitly set playlist cover
-              let coverUrl = playlist.cover_image_url || (playlist as any).cover;
+              // 1. Prioritize currently playing song's cover
+              let coverUrl = null;
 
-              // 2. If no cover and songs exist, use first song's cover
+              if (currentMusic && songs && songs.some(s => s.song.id === currentMusic.id)) {
+                // If a song is currently playing and it's in this playlist/album/liked songs
+                coverUrl = currentMusic.cover_image_url || (currentMusic as any).cover;
+              }
+
+              // 2. Fall back to explicitly set playlist cover
+              if (!coverUrl) {
+                coverUrl = playlist.cover_image_url || (playlist as any).cover;
+              }
+
+              // 3. If no cover and songs exist, use first song's cover
               if (!coverUrl && songs && songs.length > 0) {
                 const firstSong = songs[0].song;
                 coverUrl = firstSong.cover_image_url || (firstSong as any).cover;
@@ -165,7 +175,7 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
 
               return coverUrl ? (
                 <Image
-                  key={`cover-${playlist.id}`}
+                  key={`cover-${currentMusic?.id || playlist.id}`}
                   src={coverUrl}
                   alt={playlist.name}
                   fill
@@ -183,6 +193,7 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
                 </div>
               );
             })()}
+
 
             {/* Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black" />
