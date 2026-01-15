@@ -18,7 +18,7 @@ type Playlist = {
 
 type PlaylistGridProps = {
   playlists: Playlist[];
-  onOpen: (id: number) => void;
+  onOpen: (id: number, playOnOpen?: boolean) => void;
   onDelete: (id: number) => void;
 };
 
@@ -128,7 +128,10 @@ export default function PlaylistGrid({
           return (
             <div
               key={playlist.id}
-              onClick={() => onOpen(playlist.id)}
+              onClick={() => {
+                const isMobile = window.innerWidth < 640;
+                onOpen(playlist.id, isMobile);
+              }}
               className="group rounded-2xl bg-zinc-950 p-3 sm:p-4 cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
             >
               <div className="relative aspect-square rounded-xl overflow-hidden mb-3 sm:mb-4">
@@ -151,7 +154,7 @@ export default function PlaylistGrid({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onOpen(playlist.id);
+                    onOpen(playlist.id, true);
                   }}
                   className="absolute bottom-2 right-2 h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-white/10 backdrop-blur-lg opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all hover:bg-white/20 hover:scale-110"
                 >

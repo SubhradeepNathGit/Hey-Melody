@@ -280,7 +280,7 @@ export default function UserDashboard() {
   }
 
   // Opening actual playlists
-  async function openPlaylist(playlistId: number) {
+  async function openPlaylist(playlistId: number, playOnOpen = false) {
     setOpenPlaylistId(playlistId);
     setOpenPlaylistSongs(null);
     setVirtualPlaylist(null); // Close virtual if open
@@ -290,19 +290,23 @@ export default function UserDashboard() {
       .eq("playlist_id", playlistId)
       .order("position", { ascending: true });
 
-    setOpenPlaylistSongs(
-      (data ?? []).map((r: any) => ({
-        added_at: r.added_at,
-        position: r.position,
-        song: Array.isArray(r.song) ? r.song[0] : r.song,
-      }))
-    );
+    const songs = (data ?? []).map((r: any) => ({
+      added_at: r.added_at,
+      position: r.position,
+      song: Array.isArray(r.song) ? r.song[0] : r.song,
+    }));
+
+    setOpenPlaylistSongs(songs);
+
+    if (playOnOpen && songs.length > 0 && player) {
+      player.playNow(songs[0].song, songs.map((s: any) => s.song));
+    }
   }
 
   // Open Liked Songs Modal
-  function openLikedSongsModal() {
+  function openLikedSongsModal(playOnOpen = false) {
     setOpenPlaylistId(null);
-    setVirtualPlaylist({
+    const virtual = {
       playlist: {
         id: -1,
         name: "Liked Songs",
@@ -310,11 +314,16 @@ export default function UserDashboard() {
         cover_image_url: null, // Will be dynamic based on current song
       },
       songs: likedSongs
-    });
+    };
+    setVirtualPlaylist(virtual);
+
+    if (playOnOpen && likedSongs.length > 0 && player) {
+      player.playNow(likedSongs[0].song, likedSongs.map(s => s.song));
+    }
   }
 
   // Open Album Modal
-  async function openAlbumModal(albumId: string) {
+  async function openAlbumModal(albumId: string, playOnOpen = false) {
     const album = albums.find(a => a.id === albumId);
     if (!album) return;
 
@@ -326,6 +335,12 @@ export default function UserDashboard() {
       .order("position", { ascending: true });
 
     setOpenPlaylistId(null);
+    const songs = (data ?? []).map((r: any) => ({
+      added_at: r.added_at,
+      position: r.position,
+      song: Array.isArray(r.song) ? r.song[0] : r.song,
+    }));
+
     setVirtualPlaylist({
       playlist: {
         id: albumId,
@@ -333,12 +348,12 @@ export default function UserDashboard() {
         description: `Album by ${album.artist || 'Unknown'}`,
         cover_image_url: album.cover_image_url,
       },
-      songs: (data ?? []).map((r: any) => ({
-        added_at: r.added_at,
-        position: r.position,
-        song: Array.isArray(r.song) ? r.song[0] : r.song,
-      }))
+      songs: songs
     });
+
+    if (playOnOpen && songs.length > 0 && player) {
+      player.playNow(songs[0].song, songs.map((s: any) => s.song));
+    }
   }
 
 
@@ -653,7 +668,10 @@ export default function UserDashboard() {
             <p className="text-zinc-500">No liked songs yet.</p>
           ) : (
             <div
-              onClick={openLikedSongsModal}
+              onClick={() => {
+                const isMobile = window.innerWidth < 640;
+                openLikedSongsModal(isMobile);
+              }}
               className="group relative h-50 w-42 lg:h-64 lg:w-56 rounded-2xl overflow-hidden cursor-pointer bg-gradient-to-br from-cyan-900/20 to-zinc-900/20 border border-white/5 hover:border-cyan-500/50 transition-all shadow-xl shadow-black/40"
             >
               {likedSongs[0]?.song?.cover_image_url || (likedSongs[0]?.song as any)?.cover ? (
@@ -706,7 +724,10 @@ export default function UserDashboard() {
                 <div
                   key={album.id}
                   className="relative group  cursor-pointer"
-                  onClick={() => openAlbumModal(album.id)}
+                  onClick={() => {
+                    const isMobile = window.innerWidth < 640;
+                    openAlbumModal(album.id, isMobile);
+                  }}
                 >
                   <div className="aspect-square relative overflow-hidden rounded-2xl mb-4 bg-zinc-900 shadow-xl border border-white/5 group-hover:border-cyan-500/50 transition-colors">
                     {album.cover ? (
@@ -756,7 +777,7 @@ export default function UserDashboard() {
 
         {/* --- Upload Form --- */}
         <section id="upload" className="pt-8">
-         
+
           <UploadSongForm onSubmit={handleAddSong} busy={busy} />
         </section>
 

@@ -260,11 +260,13 @@ export default function MusicPlayer() {
     <>
       <Queue />
       <div
-        className={`fixed bottom-0 left-0 w-full z-50
-                    pb-[calc(env(safe-area-inset-bottom)+0.1rem)]
-                    bg-black/70 backdrop-blur-xl 
-                    transition-all duration-300
-                    ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full pointer-events-none"}`}
+       className={`fixed bottom-0 left-0 w-full z-50
+  pb-[calc(env(safe-area-inset-bottom)+0.1rem)]
+  bg-black/70 backdrop-blur-xl
+  transition-all duration-300
+  rounded-3xl lg:rounded-none
+  ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full pointer-events-none"}`}
+
       >
         <audio
           key={currentTrackId}

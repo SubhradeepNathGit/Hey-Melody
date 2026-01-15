@@ -154,23 +154,18 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
           {/* Header with Cover - Fixed height */}
           <div className="relative h-[280px] sm:h-[260px] lg:h-65 w-full overflow-hidden flex-shrink-0">
             {(() => {
-              const isVirtual = playlist.id === -1 || typeof playlist.id === 'string';
-              const currentPlayingSong = songs?.find(s => s.song.id === playingSongId)?.song;
-              const firstSong = songs?.[0]?.song;
+              // 1. Prioritize explicitly set playlist cover
+              let coverUrl = playlist.cover_image_url || (playlist as any).cover;
 
-              // Priority for Virtual (Albums/Liked): Preferred source is the active songs list
-              // Priority for regular playlists: Preferred source is the metadata cover
-              let coverUrl = (playlist.cover_image_url || (playlist as any).cover);
-
-              if (isVirtual || !coverUrl) {
-                coverUrl = (currentPlayingSong?.cover_image_url || (currentPlayingSong as any)?.cover) ||
-                  (firstSong?.cover_image_url || (firstSong as any)?.cover) ||
-                  coverUrl;
+              // 2. If no cover and songs exist, use first song's cover
+              if (!coverUrl && songs && songs.length > 0) {
+                const firstSong = songs[0].song;
+                coverUrl = firstSong.cover_image_url || (firstSong as any).cover;
               }
 
               return coverUrl ? (
                 <Image
-                  key={`cover-${playingSongId || firstSong?.id || 'default'}`}
+                  key={`cover-${playlist.id}`}
                   src={coverUrl}
                   alt={playlist.name}
                   fill
@@ -180,6 +175,11 @@ export default function PlaylistModal({ playlist, songs, onClose, onPlay, onRemo
               ) : (
                 <div className="h-full w-full bg-gradient-to-br from-cyan-600/40 via-cyan-950/50 to-black/10">
                   <div className="absolute inset-0 opacity-10 [background-image:radial-gradient(circle_at_50%_120%,rgba(6,182,212,0.3),transparent_50%)]" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg className="w-20 h-20 text-cyan-500/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                  </div>
                 </div>
               );
             })()}
