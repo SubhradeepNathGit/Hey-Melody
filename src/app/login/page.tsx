@@ -107,7 +107,7 @@ export default function Page() {
       {/* Main card */}
       <div className="relative w-full max-w-[440px] px-4">
         <div
-          className="relative rounded-2xl border border-zinc-800/60
+          className="relative rounded-2xl
                      bg-gradient-to-b from-zinc-950/98 to-black/98 backdrop-blur-xl
                      px-8 py-7"
         >

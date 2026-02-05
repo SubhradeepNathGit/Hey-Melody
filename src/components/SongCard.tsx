@@ -7,7 +7,10 @@ import type { Song } from "../../types/song";
 type SongCardProps = {
   song: Song;
   isLiked: boolean;
+  currentPlayingSongId: number | null;
+  isPlaying: boolean;
   onPlay: (song: Song) => void;
+  onTogglePlayPause: () => void;
   onAddToPlaylist: (song: Song) => void;
   onAddToAlbum: (song: Song) => void;
   onToggleLike: (song: Song) => void;
@@ -19,7 +22,10 @@ type SongCardProps = {
 export default function SongCard({
   song,
   isLiked,
+  currentPlayingSongId,
+  isPlaying,
   onPlay,
+  onTogglePlayPause,
   onAddToPlaylist,
   onAddToAlbum,
   onToggleLike,
@@ -27,10 +33,23 @@ export default function SongCard({
   toggleLikePending,
   variant = "grid",
 }: SongCardProps) {
+  const isCurrentlyPlaying = currentPlayingSongId === song.id && isPlaying;
+  const isCurrentSong = currentPlayingSongId === song.id;
+
+  const handleCardClick = () => {
+    if (isCurrentSong) {
+      // If this is the current song (playing or paused), toggle play/pause
+      onTogglePlayPause();
+    } else {
+      // If it's a different song, play it
+      onPlay(song);
+    }
+  };
+
   const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      onPlay(song);
+      handleCardClick();
     }
   };
 
@@ -40,7 +59,7 @@ export default function SongCard({
   if (variant === "recent") {
     return (
       <div
-        onClick={() => onPlay(song)}
+        onClick={handleCardClick}
         onKeyDown={handleCardKeyDown}
         role="button"
         tabIndex={0}
@@ -65,7 +84,7 @@ export default function SongCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onPlay(song);
+            handleCardClick();
           }}
           className="
             hidden md:grid
@@ -97,7 +116,14 @@ export default function SongCard({
             strokeLinejoin="round"
             className="drop-shadow-[0_0_8px_rgba(0,229,255,0.7)] lg:w-[27px] lg:h-[27px]"
           >
-            <polygon points="7,5 19,12 7,19" />
+            {isCurrentlyPlaying ? (
+              <>
+                <rect x="7" y="6" width="2" height="13" fill="#00e5ff" />
+                <rect x="15" y="6" width="2" height="13" fill="#00e5ff" />
+              </>
+            ) : (
+              <polygon points="7,5 19,12 7,19" />
+            )}
           </svg>
         </button>
 
@@ -196,7 +222,7 @@ export default function SongCard({
   ============================ */
   return (
     <div
-      onClick={() => onPlay(song)}
+      onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
       role="button"
       tabIndex={0}
@@ -218,7 +244,7 @@ export default function SongCard({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onPlay(song);
+          handleCardClick();
         }}
         className="
           hidden md:grid
@@ -246,7 +272,14 @@ export default function SongCard({
           strokeLinejoin="round"
           className="drop-shadow-[0_0_8px_rgba(0,229,255,0.7)] lg:w-5 lg:h-5"
         >
-          <polygon points="7,5 19,12 7,19" />
+          {isCurrentlyPlaying ? (
+            <>
+              <rect x="7" y="6" width="3" height="12" fill="#00e5ff" />
+              <rect x="14" y="6" width="3" height="12" fill="#00e5ff" />
+            </>
+          ) : (
+            <polygon points="7,5 19,12 7,19" />
+          )}
         </svg>
       </button>
 

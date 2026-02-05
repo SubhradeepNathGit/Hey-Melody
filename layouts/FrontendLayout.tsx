@@ -10,10 +10,14 @@ export type PlayerContextType = {
   currentMusic: Song | null;
   queue: Song[];
   isQueueModalOpen: boolean;
+  isPlaying: boolean;
+  setIsPlaying: (playing: boolean) => void;
   setQueueModalOpen: (open: boolean) => void;
   playNext: () => void;
   playPrev: () => void;
   playNow: (song: Song, queue?: Song[]) => void;
+  togglePlayPause: () => void;
+  setAudioElement?: (element: HTMLAudioElement | null) => void;
 };
 
 export const PlayerContext = createContext<PlayerContextType | null>(null);
@@ -22,6 +26,8 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
   const [currentMusic, setCurrentMusic] = useState<Song | null>(null);
   const [queue, setQueue] = useState<Song[]>([]);
   const [isQueueModalOpen, setQueueModalOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
   // Sync session to cookie for middleware
   useEffect(() => {
@@ -73,17 +79,31 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
     setCurrentMusic(song);
   }, []);
 
+  const togglePlayPause = useCallback(() => {
+    if (audioElement) {
+      if (audioElement.paused) {
+        audioElement.play().catch(() => { });
+      } else {
+        audioElement.pause();
+      }
+    }
+  }, [audioElement]);
+
   const value = useMemo(
     () => ({
       currentMusic,
       queue,
       isQueueModalOpen,
+      isPlaying,
+      setIsPlaying,
       setQueueModalOpen,
       playNext,
       playPrev,
       playNow,
+      togglePlayPause,
+      setAudioElement,
     }),
-    [currentMusic, queue, isQueueModalOpen, playNext, playPrev, playNow]
+    [currentMusic, queue, isQueueModalOpen, isPlaying, playNext, playPrev, playNow, togglePlayPause]
   );
 
   return (

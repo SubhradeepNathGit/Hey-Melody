@@ -27,10 +27,9 @@ export default function MusicPlayer() {
   const ctx = useContext(PlayerContext);
   if (!ctx) throw new Error("MusicPlayer must be used inside PlayerContext.Provider");
 
-  const { currentMusic, playNext, playPrev, isQueueModalOpen, setQueueModalOpen } = ctx;
+  const { currentMusic, playNext, playPrev, isQueueModalOpen, setQueueModalOpen, isPlaying, setIsPlaying, setAudioElement } = ctx;
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [repeatSong, setRepeatSong] = useState(false);
@@ -60,6 +59,13 @@ export default function MusicPlayer() {
   const cover = currentMusic?.cover_image_url || (currentMusic as any)?.cover || "/favicon.png";
   const title = currentMusic?.title ?? "";
   const artist = currentMusic?.artist ?? "";
+
+  // Register audio element with context
+  useEffect(() => {
+    if (audioRef.current && setAudioElement) {
+      setAudioElement(audioRef.current);
+    }
+  }, [setAudioElement, currentTrackId]); // Re-register when track changes
 
   useEffect(() => {
     const audio = audioRef.current;

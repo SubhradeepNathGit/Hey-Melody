@@ -1,14 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { Play } from "lucide-react";
+import { Play, Pause } from "lucide-react";
 import type { Song } from "../../types/song";
 
 type NowPlayingSidebarProps = {
   isPlayingSomething: boolean;
   previewSong: Song | null;
   allowAutoplay: boolean;
+  isPlaying: boolean;
   playSong: (song: Song) => void;
+  togglePlayPause: () => void;
   getVideoUrl: (song: Song | null) => string | null;
 };
 
@@ -16,7 +18,9 @@ export default function NowPlayingSidebar({
   isPlayingSomething,
   previewSong,
   allowAutoplay,
+  isPlaying,
   playSong,
+  togglePlayPause,
   getVideoUrl,
 }: NowPlayingSidebarProps) {
   return (
@@ -57,10 +61,10 @@ export default function NowPlayingSidebar({
           Now Playing
 
           <div className="flex items-center gap-1">
-                  <span className="w-0.5 h-3 bg-cyan-400 rounded-full animate-playing-1" />
-                  <span className="w-0.5 h-5 bg-cyan-400 rounded-full animate-playing-2" />
-                  <span className="w-0.5 h-4 bg-cyan-400 rounded-full animate-playing-3" />
-                </div>
+            <span className="w-0.5 h-3 bg-cyan-400 rounded-full animate-playing-1" />
+            <span className="w-0.5 h-5 bg-cyan-400 rounded-full animate-playing-2" />
+            <span className="w-0.5 h-4 bg-cyan-400 rounded-full animate-playing-3" />
+          </div>
         </h3>
 
 
@@ -105,9 +109,9 @@ export default function NowPlayingSidebar({
                 })()}
               </div>
 
-              {/* Play Button */}
+              {/* Play/Pause Button */}
               <button
-                onClick={() => playSong(previewSong)}
+                onClick={togglePlayPause}
                 className="
                   absolute bottom-3 right-3
                   h-14 w-14
@@ -123,9 +127,13 @@ export default function NowPlayingSidebar({
                   opacity-0 group-hover:opacity-100
                   sm:opacity-100
                 "
-                aria-label="Play"
+                aria-label={isPlaying ? "Pause" : "Play"}
               >
-                <Play className="w-6 h-6 ml-0.5" fill="currentColor" />
+                {isPlaying ? (
+                  <Pause className="w-5 h-7" fill="currentColor" />
+                ) : (
+                  <Play className="w-5 h-7 ml-0.5" fill="currentColor" />
+                )}
               </button>
             </div>
 

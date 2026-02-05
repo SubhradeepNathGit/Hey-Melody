@@ -296,6 +296,9 @@ export default function AllSongs() {
   });
 
   const player = useContext(PlayerContext);
+  const currentPlayingSongId = player?.currentMusic?.id ?? null;
+  const isPlayerPlaying = player?.isPlaying ?? false;
+  const togglePlayPause = player?.togglePlayPause ?? (() => { });
 
   const filteredAndSortedSongs = useMemo(() => {
     if (!songs) return [];
@@ -464,7 +467,10 @@ export default function AllSongs() {
                       <SongCard
                         song={song}
                         isLiked={isLiked}
+                        currentPlayingSongId={currentPlayingSongId}
+                        isPlaying={isPlayerPlaying}
                         onPlay={playSong}
+                        onTogglePlayPause={togglePlayPause}
                         onAddToPlaylist={openPicker}
                         onAddToAlbum={(song) => setPickerForAlbumSong(song)}
                         onToggleLike={handleToggleLike}
@@ -496,7 +502,10 @@ export default function AllSongs() {
                       <SongCard
                         song={song}
                         isLiked={isLiked}
+                        currentPlayingSongId={currentPlayingSongId}
+                        isPlaying={isPlayerPlaying}
                         onPlay={playSong}
+                        onTogglePlayPause={togglePlayPause}
                         onAddToPlaylist={openPicker}
                         onAddToAlbum={(song) => setPickerForAlbumSong(song)}
                         onToggleLike={handleToggleLike}
@@ -516,7 +525,9 @@ export default function AllSongs() {
               isPlayingSomething={isPlayingSomething}
               previewSong={previewSong}
               allowAutoplay={allowAutoplay}
+              isPlaying={isPlayerPlaying}
               playSong={playSong}
+              togglePlayPause={togglePlayPause}
               getVideoUrl={getVideoUrl}
             />
           )}
