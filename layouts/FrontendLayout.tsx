@@ -17,6 +17,8 @@ export type PlayerContextType = {
   playPrev: () => void;
   playNow: (song: Song, queue?: Song[]) => void;
   togglePlayPause: () => void;
+  isShuffle: boolean;
+  toggleShuffle: () => void;
   setAudioElement?: (element: HTMLAudioElement | null) => void;
 };
 
@@ -27,6 +29,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
   const [queue, setQueue] = useState<Song[]>([]);
   const [isQueueModalOpen, setQueueModalOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(false);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
   // Sync session to cookie for middleware
@@ -51,13 +54,28 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
 
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
-    if (indexInQueue >= 0 && indexInQueue < queue.length - 1) {
-      setCurrentMusic(queue[indexInQueue + 1]);
+
+    if (isShuffle) {
+      if (queue.length === 1) {
+        setCurrentMusic(queue[0]);
+        return;
+      }
+      // Simple random selection
+      let nextIndex = Math.floor(Math.random() * queue.length);
+      // Try to avoid repeating same song if possible
+      if (indexInQueue !== -1 && nextIndex === indexInQueue) {
+        nextIndex = (nextIndex + 1) % queue.length;
+      }
+      setCurrentMusic(queue[nextIndex]);
     } else {
-      // Loop back to start
-      setCurrentMusic(queue[0]);
+      if (indexInQueue >= 0 && indexInQueue < queue.length - 1) {
+        setCurrentMusic(queue[indexInQueue + 1]);
+      } else {
+        // Loop back to start
+        setCurrentMusic(queue[0]);
+      }
     }
-  }, [queue, indexInQueue]);
+  }, [queue, indexInQueue, isShuffle]);
 
   const playPrev = useCallback(() => {
     if (queue.length === 0) return;
@@ -89,6 +107,10 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
     }
   }, [audioElement]);
 
+  const toggleShuffle = useCallback(() => {
+    setIsShuffle((prev) => !prev);
+  }, []);
+
   const value = useMemo(
     () => ({
       currentMusic,
@@ -101,9 +123,11 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
       playPrev,
       playNow,
       togglePlayPause,
+      isShuffle,
+      toggleShuffle,
       setAudioElement,
     }),
-    [currentMusic, queue, isQueueModalOpen, isPlaying, playNext, playPrev, playNow, togglePlayPause]
+    [currentMusic, queue, isQueueModalOpen, isPlaying, playNext, playPrev, playNow, togglePlayPause, isShuffle, toggleShuffle]
   );
 
   return (

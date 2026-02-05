@@ -118,7 +118,7 @@ export default function NowPlayingSidebar({
                   rounded-full
                   grid place-items-center
                   backdrop-blur-md
-                  bg-cyan-500
+                  bg-cyan-600
                   text-white
                  
                   hover:scale-110 
@@ -130,9 +130,9 @@ export default function NowPlayingSidebar({
                 aria-label={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? (
-                  <Pause className="w-5 h-7" fill="currentColor" />
+                  <Pause className="w-10 h-6" fill="currentColor" />
                 ) : (
-                  <Play className="w-5 h-7 ml-0.5" fill="currentColor" />
+                  <Play className="w-6 h-6 ml-0.5" fill="currentColor" />
                 )}
               </button>
             </div>

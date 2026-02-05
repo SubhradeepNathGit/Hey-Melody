@@ -7,6 +7,7 @@ import {
   IoMdPlay,
   IoMdSkipBackward,
   IoMdSkipForward,
+  IoMdShuffle,
   IoMdVolumeHigh,
   IoMdVolumeOff,
   IoMdVolumeLow,
@@ -27,7 +28,7 @@ export default function MusicPlayer() {
   const ctx = useContext(PlayerContext);
   if (!ctx) throw new Error("MusicPlayer must be used inside PlayerContext.Provider");
 
-  const { currentMusic, playNext, playPrev, isQueueModalOpen, setQueueModalOpen, isPlaying, setIsPlaying, setAudioElement } = ctx;
+  const { currentMusic, playNext, playPrev, isQueueModalOpen, setQueueModalOpen, isPlaying, setIsPlaying, setAudioElement, isShuffle, toggleShuffle } = ctx;
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -379,6 +380,14 @@ export default function MusicPlayer() {
 
             {/* Section 3: Right Controls (Settings) */}
             <div className="flex items-center justify-end gap-2 mr-5 sm:gap-4">
+              <button
+                onClick={toggleShuffle}
+                className={`text-base sm:text-xl transition-all hover:scale-110 ${isShuffle ? "text-cyan-400" : "text-zinc-400 hover:text-white"}`}
+                title="Shuffle"
+              >
+                <IoMdShuffle />
+              </button>
+
               <button
                 onClick={() => setRepeatSong(!repeatSong)}
                 className={`text-base sm:text-xl transition-all hover:scale-110 ${repeatSong ? "text-cyan-400" : "text-zinc-400 hover:text-white"}`}
