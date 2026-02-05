@@ -113,17 +113,44 @@ export default function MusicPlayer() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    setCurrentTime(0);
-    if (audioSrc) {
-      audio
-        .play()
-        .then(() => setIsPlaying(true))
-        .catch(() => setIsPlaying(false));
-    } else {
-      audio.pause();
-      setIsPlaying(false);
-      setDuration(0);
-    }
+
+    let isActive = true; // flag to track if this effect is still active
+
+    const playAudio = async () => {
+      try {
+        if (audioSrc) {
+          // If the source changed, we might need to load it
+          if (audio.src !== audioSrc) {
+            audio.src = audioSrc;
+            audio.load();
+          }
+
+          if (isActive) {
+            await audio.play();
+            if (isActive) setIsPlaying(true);
+          }
+        } else {
+          audio.pause();
+          if (isActive) {
+            setIsPlaying(false);
+            setDuration(0);
+          }
+        }
+      } catch (error: any) {
+        // If the play request was interrupted by a new request properly, 
+        // browsers throw an AbortError. We should ignore this.
+        if (isActive && error.name !== 'AbortError') {
+          console.error("Playback error:", error);
+          setIsPlaying(false);
+        }
+      }
+    };
+
+    playAudio();
+
+    return () => {
+      isActive = false;
+    };
   }, [currentTrackId, audioSrc]);
 
   // Check if title needs marquee
@@ -275,7 +302,6 @@ export default function MusicPlayer() {
 
       >
         <audio
-          key={currentTrackId}
           ref={audioRef}
           src={audioSrc}
           preload="metadata"
