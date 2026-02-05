@@ -115,9 +115,9 @@ export default function Page() {
             {/* Header */}
             <header className="mb-5 text-center">
               <div className="inline-flex items-center justify-center mb-2.5">
-                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-cyan-400 via-cyan-500 to-cyan-600 grid place-items-center shadow-lg shadow-cyan-500/30">
-                  <Logo />
-                </div>
+                <div className="h-11 w-11 rounded-x grid place-items-center">
+                                 <Logo />
+                               </div>
               </div>
 
               <h1 className="text-3xl font-extrabold mb-1.5">
