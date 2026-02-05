@@ -90,4 +90,4 @@ Using TanStack Query, the application maintains a "Pulse" state that syncs data 
 
 ---
 
-*Engineered with precision. Crafted for sound. Developed by **Subhradeep Nath**.*
+*Engineered with precision. Crafted for sound. Designed & Developed by **Subhradeep Nath**.*
