@@ -45,6 +45,15 @@ export default function AllSongs() {
     return () => mq.removeEventListener?.("change", handler);
   }, []);
 
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+    checkDesktop();
+    window.addEventListener("resize", checkDesktop);
+    return () => window.removeEventListener("resize", checkDesktop);
+  }, []);
+
   // --- History Management for Modals ---
   useEffect(() => {
     const handlePopState = () => {
@@ -78,7 +87,7 @@ export default function AllSongs() {
     if (typeof window !== "undefined") window.location.reload();
   };
 
-  const songsPerPage = 10;
+
 
   const getAllSongs = async () => {
     const supabase = getSupabaseClient();
@@ -318,6 +327,11 @@ export default function AllSongs() {
     return sorted;
   }, [songs, searchQuery, sortOption, activeFilter]);
 
+  const isPlayingSomething = Boolean(player?.currentMusic);
+  const previewSong = player?.currentMusic ?? null;
+
+  const songsPerPage = (isPlayingSomething && isDesktop) ? 9 : 10;
+
   const totalPages = Math.ceil(filteredAndSortedSongs.length / songsPerPage);
   const startIndex = (currentPage - 1) * songsPerPage;
   const currentSongs = filteredAndSortedSongs.slice(startIndex, startIndex + songsPerPage);
@@ -403,8 +417,7 @@ export default function AllSongs() {
     );
   }
 
-  const isPlayingSomething = Boolean(player?.currentMusic);
-  const previewSong = player?.currentMusic ?? null;
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-black text-white">
@@ -487,7 +500,7 @@ export default function AllSongs() {
               </div>
             </section>
 
-            <section className="pb-8 sm:pb-10 md:pb-16 lg:pb-28">
+            <section className={`pb-8 sm:pb-10 md:pb-16 lg:pb-28 ${isPlayingSomething ? "pb-40" : ""}`}>
               <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4 md:mb-5 text-white">
                 Browse All Tracks
               </h3>

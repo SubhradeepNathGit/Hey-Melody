@@ -76,7 +76,7 @@ export default function NowPlayingSidebar({
                 className="
                   aspect-square
                   w-full
-                  h-full
+                  h-[385px]
                   overflow-hidden
                   rounded-xl
                   bg-black/40
