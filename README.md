@@ -1,133 +1,181 @@
 <div align="center">
 
-# 🎧 HeyMelody: The Future of Music Streaming
+# HeyMelody: Enterprise Music Streaming Platform
 
-**HeyMelody** is a cutting-edge, high-fidelity music streaming platform engineered for performance, aesthetics, and a flawless user experience. Built with the **Next.js 16 Apex Stack**, it delivers lightning-fast transitions, real-time synchronization, and a premium audio engine.
+**HeyMelody** is a high-fidelity music streaming platform engineered for performance, scalability, and a seamless user experience. Built on the **Next.js 16 App Router**, it delivers near-instantaneous route transitions, real-time data synchronization, and a custom-built, resilient audio engine.
 
 </div>
 
 ---
 
-## 📸 Interface
+## Interface & User Experience
 
-Experience our beautifully designed, glassmorphic UI tailored for the ultimate listening experience.
+The application features a modern, glassmorphic design system tailored to provide an immersive listening environment without compromising on accessibility or performance.
 
 <p align="center">
-  <img src="./public/Banner1.jpg" width="100%" alt="HeyMelody Main Banner">
+  <img src="./public/Banner1.jpg" width="100%" alt="HeyMelody Main Interface">
 </p>
 <p align="center">
-  <img src="./public/Banner 2.jpg" width="49%" alt="HeyMelody Interface 2">
-  <img src="./public/Banner3.jpg" width="49%" alt="HeyMelody Interface 3">
+  <img src="./public/Banner 2.jpg" width="49%" alt="HeyMelody Discovery View">
+  <img src="./public/Banner3.jpg" width="49%" alt="HeyMelody Library View">
 </p>
 <p align="center">
-  <img src="./public/Banner4.jpg" width="49%" alt="HeyMelody Interface 4">
-  <img src="./public/Banner5.jpg" width="49%" alt="HeyMelody Interface 5">
+  <img src="./public/Banner4.jpg" width="49%" alt="HeyMelody Player View">
+  <img src="./public/Banner5.jpg" width="49%" alt="HeyMelody Settings View">
 </p>
 <p align="center">
-  <img src="./public/Banner6.jpg" width="49%" alt="HeyMelody Interface 6">
-  <img src="./public/Banner7.jpg" width="49%" alt="HeyMelody Interface 7">
+  <img src="./public/Banner6.jpg" width="49%" alt="HeyMelody Mobile View 1">
+  <img src="./public/Banner7.jpg" width="49%" alt="HeyMelody Mobile View 2">
 </p>
 
 ---
 
-## 📖 User's Guide & Full Workflow
+## System Architecture
 
-Welcome to HeyMelody! Here is the complete journey of a user interacting with the platform:
+HeyMelody is designed with a decoupled architecture, clearly separating the presentation layer, server-rendering layer, and the backend-as-a-service (BaaS) data tier. This ensures horizontal scalability and maintainability.
 
-### 1. Onboarding & Authentication
-*   **Arrival**: Users are greeted by a sleek, dynamic landing page built with Framer Motion animations.
-*   **Secure Login**: The user clicks "Login" and is authenticated via **Google OAuth** powered by Supabase. No complex passwords needed—just a seamless one-tap entry.
-*   **Edge Protection**: If an unauthenticated user tries to access private routes, Next.js Middleware instantly redirects them at the Edge, ensuring zero-latency security.
+```mermaid
+flowchart TD
+    %% Client Tier
+    subgraph Client [Client Tier - React 19]
+        UI[UI Components\nTailwind v4 / Framer Motion]
+        AudioEngine[Singleton Audio Engine\nHTML5 Promise Control]
+        TQ[TanStack Query\nClient State & Caching]
+        
+        UI <--> TQ
+        UI --> AudioEngine
+    end
 
-### 2. Music Discovery & Navigation
-*   **Home Dashboard**: Once authenticated, the user lands on their personalized dashboard showcasing trending tracks, new releases, and curated playlists.
-*   **Lightning Fast Browsing**: Thanks to Next.js 16 Server Components and Turbopack, navigating between "Home", "Library", and "Search" is instantaneous, feeling like a native application.
-*   **Responsive Marquee**: If a song title is too long for its card, an Intersection Observer triggers a smooth marquee scrolling effect, ensuring all details are readable without clutter.
+    %% Server Tier
+    subgraph NextJS [Next.js 16 App Router]
+        Middleware[Edge Middleware\nRoute & Session Protection]
+        RSC[React Server Components\nInitial Payload Generation]
+        ServerActions[Server Actions\nSecure Data Mutations]
+    end
 
-### 3. The Playback Experience
-*   **One-Click Play**: Clicking on any track instantly triggers the custom **Audio Engine**.
-*   **Persistent Player**: As the user navigates across different pages, the music **never stops**. The audio player persists across route changes.
-*   **Global Sync**: If a user hits "Play" on a song card, the global `PlayerContext` ensures the main bottom player and any sidebars instantly reflect the "Playing" state.
+    %% Database & Auth Tier
+    subgraph Supabase [Supabase Cloud]
+        Auth[OAuth & JWT\nGoTrue]
+        DB[(PostgreSQL\nRow Level Security)]
+        Storage[Cloud Storage\nMedia Assets]
+    end
 
-### 4. Interactive Controls & Library Management
-*   **Queue Management**: Users can dynamically view their current queue.
-*   **Smart Shuffle & Repeat**: Toggle the custom shuffle algorithm that guarantees a fresh sequence without immediate repeats, and utilize looping functionalities.
-*   **Real-Time Liking**: Users can click the "Heart" icon on a track. Using TanStack Query, this interaction instantly mutates the database and updates the UI. If the user has multiple tabs open, the heart fills up across all tabs simultaneously.
-*   **Persistent Volume**: If a user lowers their volume or mutes the player, the platform remembers these preferences on their next visit.
+    %% Data Flow
+    Client <-->|Data Fetching & Mutations| NextJS
+    NextJS <-->|PostgREST / Direct DB| Supabase
+    Client <-->|Direct Auth & Real-time| Auth
+    
+    %% Specific Workflow Logic
+    Middleware -->|Validates Request| RSC
+    TQ <-->|Cache Invalidations| ServerActions
+    AudioEngine -->|Direct Media Stream| Storage
+```
 
----
-
-## ✨ Detailed Functionalities & Engineering 
-
-### 🎼 Elite Audio Engine (Under the Hood)
-*   **Single-Instance Audio Strategy**: Unlike traditional React players that unmount/remount DOM nodes (causing audio drops), HeyMelody uses a single, globally prioritized `<audio>` element. It seamlessly swaps sources and handles HTML5 Audio Promise rejections gracefully.
-*   **Race-Condition Protection**: When a user aggressively skips tracks backward and forward, the system manages the asynchronous play/pause requests perfectly to prevent overlapping audio or browser console errors.
-
-### 🔐 Next-Gen Authentication
-*   **Social Integration**: One-tap Google Login via Supabase OAuth 2.0.
-*   **Secure Sessions**: JWT-based persistent sessions with highly secured cookie management.
-*   **Glassmorphic Auth UI**: Login/signup flows are deeply styled with translucent layers and backdrop-filters to maintain the premium aesthetic.
-
-### 🔄 Real-time State & Data Synchronization
-*   **TanStack Query v5**: Handles robust server-state caching. It acts as the application's "Pulse", syncing data (like user preferences and liked songs) across multiple UI components without manual prop-drilling.
-*   **Instant Updates**: Optimistic UI updates mean the UI reacts *before* the server responds, ensuring a snappy, zero-lag feeling.
-
-### 💎 Premium UI/UX & Styling
-*   **Tailwind CSS 4**: Next-gen utility-first CSS provides a highly responsive, grid-based layout for various screen sizes (Mobile, Tablet, Desktop).
-*   **Framer Motion**: Hardware-accelerated micro-interactions, page transitions, and fluid hover states.
-*   **Zero-CLS Visualizers**: Cover arts load efficiently with structural priority, preventing Cumulative Layout Shift and ensuring the page structure remains solid as assets fetch.
-
----
-
-## 🚀 The Tech Stack (State-of-the-Art)
-
-HeyMelody leverages the latest advancements in the web ecosystem:
-
-*   **⚡ Framework**: [Next.js 16](https://nextjs.org/) (App Router) using the **Turbopack** engine.
-*   **⚛️ UI Engine**: [React 19](https://react.dev/) utilizing Server Components (RSC) and Suspense.
-*   **🛡️ Backend & Security**: [Supabase](https://supabase.com/) for Postgres DB and high-security Auth.
-*   **💎 Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-*   **🔄 State Management**: [TanStack Query v5](https://tanstack.com/query/latest)
-*   **🎭 Animations**: [Framer Motion](https://www.framer.com/motion/)
+### Architectural Highlights
+- **Edge-First Security**: Next.js Middleware acts as the primary gatekeeper. Every request is validated at the Edge, ensuring unauthenticated requests are intercepted before reaching protected Server Components, reducing unnecessary server load.
+- **Client-Server Hybrid Rendering**: Utilizing React 19 Server Components (RSC), the initial HTML payload is generated on the server for optimal Time-to-First-Byte (TTFB) and SEO. The client subsequently assumes control using TanStack Query for highly interactive, state-driven components.
+- **Row Level Security (RLS)**: The Supabase PostgreSQL database enforces strict access policies at the engine level, guaranteeing that data mutations (such as favoriting a track) are securely restricted to the authenticated user's UUID.
 
 ---
 
-## 🛠️ Developer Setup
+## Core Application Workflow
 
-### Global Prerequisites
+The application lifecycle is divided into four optimized phases to ensure a flawless user journey from authentication to audio playback.
+
+### Phase 1: Authentication & Session Management
+1. **Initial Access**: Users access the landing page, which is statically optimized.
+2. **OAuth Integration**: Authentication is handled via Supabase OAuth 2.0 (Google integration).
+3. **Session Establishment**: Upon successful authentication, a secure JSON Web Token (JWT) is issued and persisted in HTTPOnly cookies.
+4. **Edge Validation**: Navigation to protected routes (e.g., `/home`) triggers the Next.js Middleware, which verifies the JWT signature at the Edge before granting access.
+
+### Phase 2: Navigation & Data Hydration
+1. **Server-Side Rendering (SSR)**: Core dashboard views are pre-rendered on the server. Track metadata and user profiles are queried from PostgreSQL without requiring initial client-side JavaScript execution.
+2. **Client-Side Routing**: Subsequent navigation between primary modules utilizes Next.js soft-navigation.
+3. **Dynamic Viewports**: To handle variable-length metadata, Intersection Observers detect text overflow and dynamically apply CSS marquee animations, ensuring UI integrity.
+
+### Phase 3: Audio Pipeline Execution
+1. **Playback Initiation**: Selecting a track dispatches a global state update to the central `PlayerContext`.
+2. **Singleton Interception**: The custom Audio Engine receives the media URL. Rather than instantiating new DOM nodes—which introduces latency—it seamlessly updates the `src` attribute of the existing global `<audio>` element.
+3. **Race Condition Mitigation**: The engine safely wraps the `.play()` method in a promise handler. Rapid consecutive track selections are caught and gracefully aborted to prevent `AbortError` exceptions and overlapping audio streams.
+4. **State Synchronization**: The global context broadcasts the "playing" state to all active components, instantly syncing visualizers and playback controls.
+
+### Phase 4: State Mutations & Optimistic Updates
+1. **User Interaction**: Interactions such as favoriting a track trigger immediate optimistic UI updates via TanStack Query.
+2. **Server Mutation**: A Next.js Server Action asynchronously transmits the mutation to the database.
+3. **Cache Invalidation**: Upon successful database confirmation, the relevant cache keys are invalidated. This mechanism instantly synchronizes the state across all active browser tabs for the current session.
+
+---
+
+## Engineering & Core Functionalities
+
+### High-Performance Audio Engine
+*   **Gapless Playback Architecture**: Engineered to handle rapid user inputs without audio dropouts.
+*   **Persistent Preferences**: The application leverages state hydration combined with `localStorage` to persist user settings (e.g., volume levels and repeat toggles) across sessions.
+*   **Algorithmic Shuffle**: Utilizes a proprietary randomization algorithm designed to prevent immediate track repetition, resolving the common "true random" clustering issue in standard implementations.
+
+### Real-Time State Management
+*   **TanStack Query Implementation**: Acts as the centralized remote state manager. It significantly optimizes network utilization by caching data locally and polling/refetching only upon cache invalidation or staleness.
+*   **Global Context**: Eliminates prop-drilling by utilizing React Context for global state, ensuring nested components can trigger top-level state changes efficiently.
+
+### UI/UX Architecture
+*   **Utility-First CSS**: Built with Tailwind CSS 4 to provide a responsive, grid-based layout adaptable to mobile, tablet, and desktop viewports natively.
+*   **Hardware-Accelerated Animations**: Transitions and micro-interactions are managed by Framer Motion, utilizing the GPU to maintain 60 FPS performance.
+*   **Zero-CLS Rendering**: Media assets (such as cover art) are implemented with strict layout priorities and aspect ratios to prevent Cumulative Layout Shift, ensuring a stable visual hierarchy during network loads.
+
+---
+
+## Technology Stack
+
+The platform is constructed using industry-standard, modern web technologies:
+
+| Layer | Technology | Justification |
+| :--- | :--- | :--- |
+| **Framework** | Next.js 16 (App Router) | Provides optimized rendering strategies (RSC, SSR) and edge computing capabilities. |
+| **UI Library** | React 19 | Facilitates concurrent rendering and minimizes client-side JavaScript bundles via Server Components. |
+| **Backend & Auth** | Supabase | Delivers a managed PostgreSQL instance, integrated Row Level Security, and compliant OAuth flows. |
+| **Styling** | Tailwind CSS 4 | Enables highly maintainable, scalable, and atomic CSS architecture. |
+| **State Management**| TanStack Query v5 | The industry standard for robust server-state caching, synchronization, and optimistic updates. |
+| **Animations** | Framer Motion | Ensures performant, declaratively defined animations across the DOM. |
+
+---
+
+## Developer Setup & Installation
+
+### Prerequisites
 - **Node.js**: `v20.x` or higher
 - **Package Manager**: `npm` or `pnpm`
 
 ### Environment Configuration
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory containing the required Supabase parameters:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 ```
 
-### Installation & Launch
+### Installation
+Execute the following commands to initialize the development environment:
+
 ```bash
 # Clone the repository
 git clone https://github.com/SubhradeepNathGit/Hey-Melody.git
 
+# Navigate to the project directory
+cd Hey-Melody
+
 # Install dependencies
 npm install
 
-# Start the Turbopack dev server
+# Start the development server
 npm run dev
 ```
 
 ---
 
-## ⚖️ Legal & Copyright
+## License & Copyright
 
 **© 2025 - 2026 Subhradeep Nath. All Rights Reserved.**
 
 **Developer**: Subhradeep Nath  
-**Project Name**: HeyMelody Music Streaming Platform
+**Project**: HeyMelody Music Streaming Platform
 
-*Unauthorized copying of this project's source code, via any medium, is strictly prohibited. The code is provided for demonstration purposes and remains the intellectual property of the author.*
-
----
-
-*Engineered with precision. Crafted for sound. Designed & Developed by **Subhradeep Nath**.*
+*This source code is provided for demonstration and portfolio purposes. Unauthorized reproduction, distribution, or commercial use of this codebase is strictly prohibited.*
