@@ -16,16 +16,16 @@ Experience our beautifully designed, glassmorphic UI tailored for the ultimate l
   <img src="./public/Banner1.jpg" width="100%" alt="HeyMelody Main Banner">
 </p>
 <p align="center">
-  <img src="./public/Banner 2.jpg" width="50%" alt="HeyMelody Interface 2">
-  <img src="./public/Banner3.jpg" width="50%" alt="HeyMelody Interface 3">
+  <img src="./public/Banner 2.jpg" width="49%" alt="HeyMelody Interface 2">
+  <img src="./public/Banner3.jpg" width="49%" alt="HeyMelody Interface 3">
 </p>
 <p align="center">
-  <img src="./public/Banner4.jpg" width="50%" alt="HeyMelody Interface 4">
-  <img src="./public/Banner5.jpg" width="50%" alt="HeyMelody Interface 5">
+  <img src="./public/Banner4.jpg" width="49%" alt="HeyMelody Interface 4">
+  <img src="./public/Banner5.jpg" width="49%" alt="HeyMelody Interface 5">
 </p>
 <p align="center">
-  <img src="./public/Banner6.jpg" width="50%" alt="HeyMelody Interface 6">
-  <img src="./public/Banner7.jpg" width="50%" alt="HeyMelody Interface 7">
+  <img src="./public/Banner6.jpg" width="49%" alt="HeyMelody Interface 6">
+  <img src="./public/Banner7.jpg" width="49%" alt="HeyMelody Interface 7">
 </p>
 
 ---
